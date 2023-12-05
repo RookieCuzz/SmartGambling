@@ -1,0 +1,48 @@
+GUI:
+    size: 45
+    title: '&6Choose bet amount'
+    moneyButtons:
+        '100': [11]
+        '250': [12]
+        '500': [13]
+        '1000': [14]
+        '2500': [15]
+    customAmountButton: [31]
+    backButton: []
+    Items:
+        '2':
+            slots: [11]
+            material: IRON_NUGGET
+            name: '&6&l100$'
+            lore:
+                - '&7Click to select!'
+        '3':
+            slots: [12]
+            material: GOLD_NUGGET
+            name: '&6&l250$'
+            lore:
+                - '&7Click to select!'
+        '4':
+            slots: [13]
+            material: GOLD_INGOT
+            name: '&6&l500$'
+            lore:
+                - '&7Click to select!'
+        '5':
+            slots: [14]
+            material: DIAMOND
+            name: '&6&l1000$'
+            lore:
+                - '&7Click to select!'
+        '6':
+            slots: [15]
+            material: EMERALD
+            name: '&6&l2500$'
+            lore:
+                - '&7Click to select!'
+        '7':
+            slots: [31]
+            material: HONEYCOMB
+            name: '&6&lCustom Amount$'
+            lore:
+                - '&7Click to input!'

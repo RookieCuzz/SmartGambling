@@ -1,0 +1,17 @@
+name: SmartGambling
+version: '1.0.6'
+main: me.arthed.smartgambling.SmartGambling
+api-version: 1.18
+depend: [Vault]
+softdepend: [WorldGuard, PlaceholderAPI, BossShopPro, Skript]
+author: 'Styro457'
+authors:
+  - 'Styro457'
+  - 'MihiBlu'
+commands:
+  sg:
+    description: Main command for SmartGambling
+    aliases: ["smartgambling"]
+  jackpot:
+    description: Opens the jackpot menu
+    aliases: ["jp", "lottery"]

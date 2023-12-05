@@ -1,0 +1,128 @@
+Cards:
+  Ace:
+    chance: 20
+    material: DIAMOND
+    customModelDataList: [104, 105, 106, 107]
+    value: 11
+    amount: 11
+  K:
+    chance: 10
+    material: EMERALD
+    customModelDataList: [108, 109, 110, 111]
+    value: 10
+    amount: 10
+  '1':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 1
+    amount: 1
+  '2':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 2
+    amount: 2
+  '3':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 3
+    amount: 3
+  '4':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 4
+    amount: 4
+  '5':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 5
+    amount: 5
+  '6':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 6
+    amount: 6
+  '7':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 7
+    amount: 7
+  '8':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 8
+    amount: 8
+  '9':
+    chance: 12
+    material: DIRT
+    customModelDataList: [112, 113, 114, 115]
+    value: 9
+    amount: 9
+
+CardBack:
+  material: BARRIER
+  name: '&fCard'
+
+######################################
+
+Table:
+  material: STICK
+  customModelData: 509
+  Offset:
+    x: 0
+    y: 0
+    z: 0
+  ChairOffset1:
+    x: 0
+    y: -1
+    z: 1.5
+  ChairOffset2:
+    x: 0
+    y: -1
+    z: -1.5
+
+######################################
+
+GUI:
+  size: 54
+  title: '&d&lBlackjack'
+  titleStand: '&d&lBlackjack - Waiting for opponent...'
+  titleWin: '&d&lBlackjack - WIN!'
+  titleLost: '&d&lBlackjack - lost'
+  titleDraw: '&d&lBlackjack - draw'
+  cardSlots: [19, 20, 21, 22, 23, 24, 25]
+  opponentCardSlots: [28, 29, 30, 31, 32, 33, 34]
+  hitButton: [47, 48]
+  standButton: [50, 51]
+  placeholderSlots: [38]
+  closeButton: []
+  Items:
+    '1':
+      slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 27, 36, 45, 46, 49, 52, 53, 17, 26, 35, 44]
+      material: 'GRAY_STAINED_GLASS_PANE'
+      name: '&f'
+      animation:
+        materials:
+          - ORANGE_STAINED_GLASS_PANE
+          - RED_STAINED_GLASS_PANE
+        delay: 10
+        vary: 2
+    'placeholder':
+      slot: 38
+      material: 'GREEN_CONCRETE'
+      name: '&aHit %amount% %opponent_status%'
+    '2':
+      slots: [47, 48]
+      material: 'GREEN_CONCRETE'
+      name: '&aHit'
+    '3':
+      slots: [50, 51]
+      material: 'YELLOW_CONCRETE'
+      name: '&aStand'

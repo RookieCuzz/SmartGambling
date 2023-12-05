@@ -1,0 +1,236 @@
+Machine:
+  material: STICK
+  customModelData: 514
+  Offset:
+    x: 0
+    y: 0
+    z: 0
+Items:
+  Diamond:
+    material: DIAMOND
+    name: '&b&l- DIAMOND -'
+    chance: 10
+  Emerald:
+    material: EMERALD
+    name: '&a&lEMERALD'
+    chance: 10
+  Totem:
+    material: TOTEM_OF_UNDYING
+    name: '&e&l- TOTEM -'
+    chance: 1
+    sound: 'rare_item'
+  Lapis:
+    material: LAPIS_LAZULI
+    name: '&3&lLAPIS'
+    chance: 20
+  Dirt:
+    material: DIRT
+    chance: 20
+  Stone:
+    material: STONE
+    chance: 10
+  RGOLD:
+    material: RAW_GOLD
+    chance: 20
+  RIRON:
+    material: RAW_IRON
+    chance: 20
+  COAL:
+    material: COAL
+    chance: 20
+  OBSIDIAN:
+    material: OBSIDIAN
+    chance: 20
+  DIAMOND_SWORD:
+    material: DIAMOND_SWORD
+    name: '&d&lCOOL DIAMOND SWORD'
+    chance: 3
+  BARRIER:
+    material: BARRIER
+    chance: 15
+    equivalent:
+      - Diamond
+      - Emerald
+      - Lapis
+      - COAL
+
+######################################
+
+Categories:
+  ORES:
+    - RGOLD
+    - RIRON
+    - Lapis
+    - Diamond
+    - Emerald
+    - COAL
+    - BARRIER
+
+######################################
+
+Rewards:
+  '1':
+    Requirements:
+      type: 'exact'
+      items:
+        - Emerald
+        - Diamond
+        - Emerald
+    Reward:
+      moneyMultiplier: 5
+      sound: 'slotsWin'
+  '2':
+    Requirements:
+      type: 'row'
+      item: 'Diamond'
+      amount: 3
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 3
+      sound: 'slotsWin'
+  '3':
+    Requirements:
+      type: 'row'
+      item: 'Diamond'
+      amount: 4
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 4
+      sound: 'slotsWin'
+  '4':
+    Requirements:
+      type: 'row'
+      item: 'Diamond'
+      amount: 5
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 5
+      sound: 'slotsWin'
+  '5':
+    Requirements:
+      type: 'row'
+      item: 'ORES'
+      amount: 3
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 1.5
+      commands:
+        - 'give %player% gold_ingot 16'
+        - 'message: &a&lYou have won 16 gold!'
+      sound: 'slotsWin'
+  '6':
+    Requirements:
+      type: 'row'
+      item: 'ORES'
+      amount: 4
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 2
+      commands:
+        - 'give %player% diamond 1'
+        - 'message: &a&lYou have won 1 diamond!'
+      sound: 'slotsWin'
+
+  '7':
+    Requirements:
+      type: 'row'
+      item: 'ORES'
+      amount: 5
+      startingLine: 0
+    Reward:
+      moneyMultiplier: 2.5
+      commands:
+        - 'give %player% diamond 10'
+        - 'message: &a&lYou have won 10 diamonds!'
+      sound: 'slotsWin'
+  '8':
+    Requirements:
+      type: 'row'
+      item: 'Totem'
+      amount: 1
+    Reward:
+      moneyMultiplier: 20
+      sound: 'jackpot'
+  '9':
+    Requirements:
+      type: 'row'
+      item: 'DIAMOND_SWORD'
+      amount: 3
+    Reward:
+      moneyMultiplier: 1
+      commands:
+        - 'give %player% diamond_sword{ench:[{id:3,lvl:5},{id:9,lvl:3}]} 1'
+      sound: 'rare_win'
+
+######################################
+defaultBet: 100
+
+GUI:
+  size: 54
+  title: '&3&lSlot Example &7- &6&l%bet%$'
+  animationDuration: 80
+  animationSpeed: 6
+  spinButton: [48, 49, 50]
+  moneyButton: [44]
+  rewardsGuiButton: [ 36 ]
+  displaySlots: [[11, 20, 29], [12, 21, 30], [13, 22, 31], [14, 23, 32], [15, 24, 33]]
+  closeButton: []
+  Items:
+    '1':
+      slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 37, 38, 39, 40, 41, 42, 43]
+      material: GRAY_STAINED_GLASS_PANE
+      name: '&f'
+      animation:
+        materials:
+          - BLUE_STAINED_GLASS_PANE
+          - WHITE_STAINED_GLASS_PANE
+        delay: 10
+        vary: 2
+        dependent: true
+    '2':
+      slots: [18, 19, 25, 26]
+      material: LIME_STAINED_GLASS_PANE
+      name: '&f'
+    '4':
+      slot: 44
+      material: GOLD_INGOT
+      name: '&6Choose bet amount'
+      lore:
+        - '&7Click to choose!'
+    '9':
+      slot: 36
+      material: IRON_INGOT
+      name: '&3See possible rewards'
+      lore:
+        - '&7Click to open!'
+    '5':
+      slots: [48, 49, 50]
+      material: EMERALD_BLOCK
+      customModelData: 43221
+      name: '&aSPIN'
+      lore:
+        - '&7Click to spin!'
+    '6':
+      slots: [11, 12, 13, 14, 15, 29, 30, 31, 32, 33]
+      material: GOLD_INGOT
+    '7':
+      slots: [ 20, 21, 22, 23, 24 ]
+      material: DIAMOND
+
+######################################
+
+RewardsGUI:
+  size: 54
+  title: '&3&lSlot Example &7- Rewards'
+  backButton: [45]
+  Items:
+    '1':
+      slots: [ 11, 12, 13, 14, 15, 20, 21, 22, 23, 29, 30, 31, 38, 39]
+      material: DIAMOND
+      name: '&3Diamond'
+    '2':
+      slot: 45
+      material: ARROW
+      name: '&7Back'
+      lore:
+        - '&7Click to go back!'
