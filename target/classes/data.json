@@ -1,0 +1,28 @@
+{
+  "world": [
+    {
+      "chunkX": 10,
+      "chunkZ": 30,
+      "machines": [
+        {
+          "id": "UD-FDC-XC-DSADAS",
+          "type": "slotExample",
+          "rotation":
+          "blocks": [40, 24, 12, 23, 32, 12],
+          "entities": ["USD-FDDFS-FDSF-ASDAS", "DSAD-FDSDF-FD-DFDS"]
+        }
+      ]
+    },
+    {
+      "chunkX": 11,
+      "chunkZ": 30,
+      "machines": [
+        {
+          "type": "slotExample",
+          "blocks": [40, 24, 12, 23, 32, 12],
+          "entities": ["USD-FDDFS-FDSF-ASDAS", "DSAD-FDSDF-FD-DFDS"]
+        }
+      ]
+    }
+  ]
+}
