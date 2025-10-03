@@ -35,7 +35,6 @@ import me.arthed.smartgambling.listeners.ChatListener;
 import me.arthed.smartgambling.listeners.EntityListener;
 import me.arthed.smartgambling.listeners.InventoryListener;
 import me.arthed.smartgambling.listeners.WorldSaveListener;
-import net.milkbowl.vault.economy.Economy;
 import nl.odalitadevelopments.menus.OdalitaMenus;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -47,7 +46,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class SmartGambling
@@ -57,7 +55,10 @@ public final class SmartGambling
     public static String PREFIX = "SmartGambling";
     public static String ECONOMY_HANDLER = "BossShopPro";
     private static SmartGambling instance;
-    private static Economy vaultEconomy;
+    // Vault economy removed; using PlayerPoints-only economy
+    // PlayerPoints integration via reflection (no compile-time dependency)
+    private Object playerPointsApi; // org.black_ixx.playerpoints.PlayerPointsAPI instance
+    private boolean usePlayerPoints = false;
     public ConfigManager configManager;
     public final HashMap<World, HashMap<Chunk, List<MachineData>>> machines = new HashMap();
     public final HashMap<UUID, MachineData> uuidMachines = new HashMap();
@@ -85,9 +86,7 @@ public final class SmartGambling
         return instance;
     }
 
-    public static Economy getEconomy() {
-        return vaultEconomy;
-    }
+    // getEconomy removed; use PlayerPoints-only helpers
 
     public static String getMachineName(Machine machineType) {
         if (machineType instanceof SlotMachine) {
@@ -105,11 +104,15 @@ public final class SmartGambling
     @Override
     public void onEnable() {
         instance = this;
-        if (!this.setupEconomy()) {
-            Bukkit.getConsoleSender().sendMessage(String.format("[%s] - Disabled due to no Vault dependency found!", this.getDescription().getName()));
-//            this.getServer().getPluginManager().disablePlugin((Plugin)this);
+        // 初始化 PlayerPoints（仅点券经济）
+        this.setupPlayerPoints();
+        if (!this.usePlayerPoints || this.playerPointsApi == null) {
+            Bukkit.getConsoleSender().sendMessage(String.format("[%s] - Disabled: PlayerPoints not found!", this.getDescription().getName()));
+            this.getServer().getPluginManager().disablePlugin((Plugin)this);
             return;
         }
+        // 设置插件集成名称（保持与旧逻辑一致）
+        this.plugin_integration_name = "Skript";
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new SmartGamblingPlaceholders(this).register();
         }
@@ -168,17 +171,147 @@ public final class SmartGambling
         }
     }
 
-    private boolean setupEconomy() {
-        if (this.getServer().getPluginManager().getPlugin("Vault") == null) {
-            return false;
+    // Vault setup removed
+
+    private void setupPlayerPoints() {
+        try {
+            if (this.getServer().getPluginManager().isPluginEnabled("PlayerPoints")) {
+                // Try typical package first
+                Class<?> ppMainClass;
+                try {
+                    ppMainClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
+                } catch (ClassNotFoundException e) {
+                    // Fallback to older package
+                    ppMainClass = Class.forName("org.black_ixx.PlayerPoints");
+                }
+                Object ppInstance = ppMainClass.getMethod("getInstance").invoke(null);
+                this.playerPointsApi = ppMainClass.getMethod("getAPI").invoke(ppInstance);
+                this.usePlayerPoints = (this.playerPointsApi != null);
+                if (this.usePlayerPoints) {
+                    this.getLogger().info("PlayerPoints API detected and initialized.");
+                }
+            }
+        } catch (Exception e) {
+            this.usePlayerPoints = false;
+            this.playerPointsApi = null;
+            this.getLogger().warning("Failed to initialize PlayerPoints API: " + e.getMessage());
         }
-        this.plugin_integration_name = "Skript";
-        RegisteredServiceProvider rsp = this.getServer().getServicesManager().getRegistration(Economy.class);
-        if (rsp == null) {
-            return false;
+    }
+
+    // Economy helpers (PlayerPoints only)
+    public static double getBalance(Player player) {
+        SmartGambling plugin = getInstance();
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                // Try look(UUID) -> int
+                java.lang.reflect.Method lookUuid = plugin.playerPointsApi.getClass().getMethod("look", java.util.UUID.class);
+                Object points = lookUuid.invoke(plugin.playerPointsApi, player.getUniqueId());
+                return points instanceof Number ? ((Number) points).doubleValue() : 0.0D;
+            } catch (NoSuchMethodException nsme) {
+                try {
+                    // Fallback getPoints(Player) -> int
+                    java.lang.reflect.Method getPointsPlayer = plugin.playerPointsApi.getClass().getMethod("getPoints", org.bukkit.entity.Player.class);
+                    Object points = getPointsPlayer.invoke(plugin.playerPointsApi, player);
+                    return points instanceof Number ? ((Number) points).doubleValue() : 0.0D;
+                } catch (Exception e) {
+                    plugin.getLogger().warning("PlayerPoints getBalance failed: " + e.getMessage());
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints getBalance failed: " + e.getMessage());
+            }
         }
-        vaultEconomy = (Economy)rsp.getProvider();
-        return vaultEconomy != null;
+        return 0.0D;
+    }
+
+    public static double getBalance(org.bukkit.OfflinePlayer player) {
+        SmartGambling plugin = getInstance();
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                java.lang.reflect.Method lookUuid = plugin.playerPointsApi.getClass().getMethod("look", java.util.UUID.class);
+                Object points = lookUuid.invoke(plugin.playerPointsApi, player.getUniqueId());
+                return points instanceof Number ? ((Number) points).doubleValue() : 0.0D;
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints getBalance (offline) failed: " + e.getMessage());
+            }
+        }
+        return 0.0D;
+    }
+
+    public static boolean withdraw(Player player, double amount) {
+        SmartGambling plugin = getInstance();
+        int amt = (int) Math.floor(amount);
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                // Prefer take(UUID, int)
+                try {
+                    java.lang.reflect.Method takeUuid = plugin.playerPointsApi.getClass().getMethod("take", java.util.UUID.class, int.class);
+                    Object res = takeUuid.invoke(plugin.playerPointsApi, player.getUniqueId(), amt);
+                    return (res instanceof Boolean) ? (Boolean) res : true;
+                } catch (NoSuchMethodException nsme) {
+                    // Fallback take(Player, int)
+                    java.lang.reflect.Method takePlayer = plugin.playerPointsApi.getClass().getMethod("take", org.bukkit.entity.Player.class, int.class);
+                    takePlayer.invoke(plugin.playerPointsApi, player, amt);
+                    return true;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints withdraw failed: " + e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public static boolean withdraw(org.bukkit.OfflinePlayer player, double amount) {
+        SmartGambling plugin = getInstance();
+        int amt = (int) Math.floor(amount);
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                java.lang.reflect.Method takeUuid = plugin.playerPointsApi.getClass().getMethod("take", java.util.UUID.class, int.class);
+                Object res = takeUuid.invoke(plugin.playerPointsApi, player.getUniqueId(), amt);
+                return (res instanceof Boolean) ? (Boolean) res : true;
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints withdraw (offline) failed: " + e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public static void deposit(Player player, double amount) {
+        SmartGambling plugin = getInstance();
+        int amt = (int) Math.floor(amount);
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                // Prefer give(UUID, int)
+                try {
+                    java.lang.reflect.Method giveUuid = plugin.playerPointsApi.getClass().getMethod("give", java.util.UUID.class, int.class);
+                    giveUuid.invoke(plugin.playerPointsApi, player.getUniqueId(), amt);
+                    return;
+                } catch (NoSuchMethodException nsme) {
+                    java.lang.reflect.Method givePlayer = plugin.playerPointsApi.getClass().getMethod("give", org.bukkit.entity.Player.class, int.class);
+                    givePlayer.invoke(plugin.playerPointsApi, player, amt);
+                    return;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints deposit failed: " + e.getMessage());
+            }
+        }
+        // No-op if PlayerPoints not available (plugin disabled in onEnable)
+    }
+
+    public static void deposit(org.bukkit.OfflinePlayer player, double amount) {
+        SmartGambling plugin = getInstance();
+        int amt = (int) Math.floor(amount);
+        if (plugin.usePlayerPoints && plugin.playerPointsApi != null) {
+            try {
+                java.lang.reflect.Method giveUuid = plugin.playerPointsApi.getClass().getMethod("give", java.util.UUID.class, int.class);
+                giveUuid.invoke(plugin.playerPointsApi, player.getUniqueId(), amt);
+                return;
+            } catch (Exception e) {
+                plugin.getLogger().warning("PlayerPoints deposit (offline) failed: " + e.getMessage());
+            }
+        }
+        // No-op if PlayerPoints not available (plugin disabled in onEnable)
     }
 
     public void onLoad() {

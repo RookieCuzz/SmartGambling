@@ -274,8 +274,8 @@ public class JackpotMachine implements Machine {
                     ItemStack winningHead = this.baseGameInventory.getItem(this.winningHeadSlot);
                     OfflinePlayer winner = ((SkullMeta)winningHead.getItemMeta()).getOwningPlayer();
                     float amountWon = (float)this.totalBets;
-                    SmartGambling.getEconomy().depositPlayer(winner, (double)amountWon);
-                    double balance = SmartGambling.getEconomy().getBalance(winner);
+                    SmartGambling.deposit(winner, (double)amountWon);
+                    double balance = SmartGambling.getBalance(winner);
                     if (winner instanceof Player) {
                         Player player = (Player)winner;
                         player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("jackpotWinOwn"), amountWon, balance));
@@ -398,14 +398,14 @@ public class JackpotMachine implements Machine {
     }
 
     public void placeBet(Player player, int amount) {
-        if (SmartGambling.getEconomy().getBalance(player) < (double)amount) {
-            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, SmartGambling.getEconomy().getBalance(player)));
+        if (SmartGambling.getBalance(player) < (double)amount) {
+            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, SmartGambling.getBalance(player)));
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
         } else {
             this.bets.put(player, amount);
             this.totalBets += amount;
-            SmartGambling.getEconomy().withdrawPlayer(player, (double)amount);
-            player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), amount, SmartGambling.getEconomy().getBalance(player)));
+            SmartGambling.withdraw(player, (double)amount);
+            player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), amount, SmartGambling.getBalance(player)));
             if (this.timeLeft < 30) {
                 this.timeLeft += this.timeAddedOnBet;
                 if (this.timeLeft > this.gameDuration) {
@@ -421,8 +421,8 @@ public class JackpotMachine implements Machine {
         int bet = this.bets.get(player);
         this.totalBets -= bet;
         this.bets.remove(player);
-        SmartGambling.getEconomy().depositPlayer(player, (double)bet);
-        player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyReceived"), bet, SmartGambling.getEconomy().getBalance(player)));
+        SmartGambling.deposit(player, (double)bet);
+        player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyReceived"), bet, SmartGambling.getBalance(player)));
         this.updatePlayerBets();
         Inventory inventory = ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).inventory;
         this.removeCustomItem(this.removeBetItems, inventory);

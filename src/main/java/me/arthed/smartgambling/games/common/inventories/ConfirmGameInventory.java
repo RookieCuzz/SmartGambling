@@ -8,7 +8,6 @@
 /*    */ import me.arthed.smartgambling.games.common.machine.OpenInterface;
 /*    */ import me.arthed.smartgambling.games.common.machine.OpenMachine;
 /*    */ import me.arthed.smartgambling.utils.DisplayUtils;
-/*    */ import net.milkbowl.vault.economy.Economy;
 /*    */ import org.bukkit.Bukkit;
 /*    */ import org.bukkit.OfflinePlayer;
 /*    */ import org.bukkit.Sound;
@@ -65,11 +64,10 @@
 /* 64 */       Player player = (Player)event.getWhoClicked();
 /* 65 */       OpenMachine openMachine = (OpenMachine)this.oldInterfaces.get(event.getWhoClicked());
 /* 66 */       MachineDataBlackjack machineData = (MachineDataBlackjack)openMachine.machineData;
-/* 67 */       Economy economy = SmartGambling.getEconomy();
-/* 68 */       if (economy.getBalance((OfflinePlayer)player) < machineData.bet) {
+/* 68 */       if (SmartGambling.getBalance((OfflinePlayer)player) < machineData.bet) {
 /* 69 */         DisplayUtils.displayActionBar(player, 
 /*    */             
-/* 71 */             String.format((String)(SmartGambling.getInstance()).configManager.messages.get("notEnoughMoneyActionBar"), new Object[] { Integer.valueOf(machineData.bet), Double.valueOf(economy.getBalance((OfflinePlayer)player)) }));
+/* 71 */             String.format((String)(SmartGambling.getInstance()).configManager.messages.get("notEnoughMoneyActionBar"), new Object[] { Integer.valueOf(machineData.bet), Double.valueOf(SmartGambling.getBalance((OfflinePlayer)player)) }));
 /*    */         
 /* 73 */         player.playSound((Entity)player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
 /*    */         return;

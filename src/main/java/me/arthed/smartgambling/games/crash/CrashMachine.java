@@ -369,8 +369,8 @@ public class CrashMachine implements Machine {
 
         for(Entry<Player, Double> entry : this.crashedAt.entrySet()) {
             double amountWon = (double)Math.round((double)((Integer)this.bets.get(entry.getKey())).intValue() * entry.getValue() * 100.0D) / 100.0D;
-            SmartGambling.getEconomy().depositPlayer((OfflinePlayer)entry.getKey(), amountWon);
-            double balance = SmartGambling.getEconomy().getBalance((OfflinePlayer)entry.getKey());
+            SmartGambling.deposit((OfflinePlayer)entry.getKey(), amountWon);
+            double balance = SmartGambling.getBalance((OfflinePlayer)entry.getKey());
             ((CustomSound)SmartGambling.getInstance().customSounds.get("crashWin")).play((Player)entry.getKey());
             ((Player)entry.getKey()).sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("crashWin"), amountWon, entry.getValue(), this.value));
             ((Player)entry.getKey()).sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoney"), amountWon, balance));
@@ -450,13 +450,13 @@ public class CrashMachine implements Machine {
     }
 
     public void placeBet(Player player, int amount) {
-        if (SmartGambling.getEconomy().getBalance(player) < (double)amount) {
-            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, SmartGambling.getEconomy().getBalance(player)));
+        if (SmartGambling.getBalance(player) < (double)amount) {
+            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, SmartGambling.getBalance(player)));
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
         } else {
             this.bets.put(player, amount);
-            SmartGambling.getEconomy().withdrawPlayer(player, (double)amount);
-            player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), amount, SmartGambling.getEconomy().getBalance(player)));
+            SmartGambling.withdraw(player, (double)amount);
+            player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), amount, SmartGambling.getBalance(player)));
             this.updatePlayerBets();
         }
     }
@@ -464,8 +464,8 @@ public class CrashMachine implements Machine {
     public void removeBet(Player player) {
         int bet = this.bets.get(player);
         this.bets.remove(player);
-        SmartGambling.getEconomy().depositPlayer(player, (double)bet);
-        player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyReceived"), bet, SmartGambling.getEconomy().getBalance(player)));
+        SmartGambling.deposit(player, (double)bet);
+        player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyReceived"), bet, SmartGambling.getBalance(player)));
         this.updatePlayerBets();
         Inventory inventory = ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).inventory;
         this.removeCustomItem(this.removeBetItems, inventory);

@@ -2,7 +2,7 @@ name: SmartGambling
 version: '1.0.6'
 main: me.arthed.smartgambling.SmartGambling
 api-version: 1.21
-depend: [Vault,OdalitaMenus]
+depend: [PlayerPoints,OdalitaMenus]
 author: 'Styro457'
 authors:
   - 'Styro457'

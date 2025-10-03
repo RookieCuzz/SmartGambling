@@ -13,7 +13,6 @@ import me.arthed.smartgambling.games.common.machine.OpenMachine;
 import me.arthed.smartgambling.games.slots.objects.SlotItem;
 import me.arthed.smartgambling.games.slots.objects.rewards.Reward;
 import me.arthed.smartgambling.utils.DisplayUtils;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -235,13 +234,13 @@ public class SlotMachine implements Machine {
         SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
         if (!invData.spinning) {
             int bet = ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount;
-            Economy economy = SmartGambling.getEconomy();
-            if (economy.getBalance(player) < (double)bet) {
-                DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), bet, economy.getBalance(player)));
+            double balance = SmartGambling.getBalance(player);
+            if (balance < (double)bet) {
+                DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), bet, balance));
                 player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
             } else {
-                SmartGambling.getEconomy().withdrawPlayer(player, (double)bet);
-                player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount, SmartGambling.getEconomy().getBalance(player)));
+                SmartGambling.withdraw(player, (double)bet);
+                player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount, SmartGambling.getBalance(player)));
                 invData.spinning = true;
                 this.animations.startDependentAnimations(inventory);
                 this.startAnimation(inventory, player);
@@ -259,8 +258,8 @@ public class SlotMachine implements Machine {
         Reward reward = this.checkRewards(invData.finalItems);
         if (reward != null) {
             float amountWon = (float)Math.round((float)((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount * reward.moneyMultiplier);
-            SmartGambling.getEconomy().depositPlayer(player, (double)amountWon);
-            double balance = SmartGambling.getEconomy().getBalance(player);
+        SmartGambling.deposit(player, (double)amountWon);
+        double balance = SmartGambling.getBalance(player);
             DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoneyActionBar"), amountWon, balance));
             player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoney"), amountWon, balance));
             if (reward.winningCommands != null) {

@@ -83,7 +83,10 @@
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
-
+        <repository>
+            <id>rosewood-repo</id>
+            <url>https://repo.rosewooddev.io/repository/public/</url>
+        </repository>
 
     </repositories>
 
@@ -95,7 +98,12 @@
             <version>1.1.0</version>
             <scope>provided</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.black_ixx</groupId>
+            <artifactId>playerpoints</artifactId>
+            <version>3.3.3</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>io.github.odalita-developments.odalitamenus</groupId>
             <artifactId>core</artifactId>

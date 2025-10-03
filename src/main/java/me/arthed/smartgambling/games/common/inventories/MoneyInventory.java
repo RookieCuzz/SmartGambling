@@ -7,7 +7,6 @@ import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnima
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.utils.DisplayUtils;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
@@ -73,9 +72,8 @@ public class MoneyInventory
     }
 
     public boolean inputMoney(Player player, int amount) {
-        Economy economy;
-        if (this.requireMoneyBefore && (economy = SmartGambling.getEconomy()).getBalance((OfflinePlayer)player) < (double)amount) {
-            DisplayUtils.displayActionBar(player, String.format(SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, economy.getBalance((OfflinePlayer)player)));
+        if (this.requireMoneyBefore && SmartGambling.getBalance((OfflinePlayer)player) < (double)amount) {
+            DisplayUtils.displayActionBar(player, String.format(SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), amount, SmartGambling.getBalance((OfflinePlayer)player)));
             player.playSound((Entity)player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0f, 1.0f);
             return false;
         }

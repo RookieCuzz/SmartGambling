@@ -89,8 +89,8 @@ public class BlackJack
             machineData.inUse = false;
             machineData.bet = openInterface.betAmount;
             machineData.player1 = player;
-            SmartGambling.getEconomy().withdrawPlayer((OfflinePlayer)player, (double)openBlackjack.betAmount);
-            final double balance = SmartGambling.getEconomy().getBalance((OfflinePlayer)player);
+            SmartGambling.withdraw((OfflinePlayer)player, (double)openBlackjack.betAmount);
+            final double balance = SmartGambling.getBalance((OfflinePlayer)player);
             player.sendMessage(String.format(SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), openBlackjack.betAmount, balance));
             openBlackjack.machineData.entities[0].addPassenger((Entity)player);
             player.setRotation(180.0f, 0.0f);
@@ -109,8 +109,8 @@ public class BlackJack
             }
             machineData.inUse = true;
             machineData.player2 = player;
-            SmartGambling.getEconomy().withdrawPlayer((OfflinePlayer)player, (double)openBlackjack.betAmount);
-            final double balance = SmartGambling.getEconomy().getBalance((OfflinePlayer)player);
+            SmartGambling.withdraw((OfflinePlayer)player, (double)openBlackjack.betAmount);
+            final double balance = SmartGambling.getBalance((OfflinePlayer)player);
             player.sendMessage(String.format(SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), openBlackjack.betAmount, balance));
             openBlackjack.machineData.entities[1].addPassenger((Entity)player);
             player.setRotation(0.0f, 0.0f);
@@ -129,8 +129,8 @@ public class BlackJack
             return;
         }
         if (!machineData.startGame && machineData.player2 == null) {
-            SmartGambling.getEconomy().depositPlayer((OfflinePlayer)player, (double)openBlackjack.betAmount);
-            double balance = SmartGambling.getEconomy().getBalance((OfflinePlayer)player);
+            SmartGambling.deposit((OfflinePlayer)player, (double)openBlackjack.betAmount);
+            double balance = SmartGambling.getBalance((OfflinePlayer)player);
             player.sendMessage(String.format(SmartGambling.getInstance().configManager.messages.get("moneyReceived"), openBlackjack.betAmount, balance));
             machineData.inUse = false;
             machineData.player1 = null;
@@ -315,11 +315,11 @@ public class BlackJack
             ConfigManager configManager = SmartGambling.getInstance().configManager;
             winner.sendMessage(String.format(configManager.messages.get("drawBlackJack"), machineData.player1Value));
             loser.sendMessage(String.format(configManager.messages.get("drawBlackJack"), machineData.player1Value));
-            SmartGambling.getEconomy().depositPlayer((OfflinePlayer)winner, (double)machineData.bet);
-            double balance1 = SmartGambling.getEconomy().getBalance((OfflinePlayer)winner);
+            SmartGambling.deposit((OfflinePlayer)winner, (double)machineData.bet);
+            double balance1 = SmartGambling.getBalance((OfflinePlayer)winner);
             winner.sendMessage(String.format(SmartGambling.getInstance().configManager.messages.get("moneyReceived"), machineData.bet, balance1));
-            SmartGambling.getEconomy().depositPlayer((OfflinePlayer)loser, (double)machineData.bet);
-            double balance2 = SmartGambling.getEconomy().getBalance((OfflinePlayer)loser);
+            SmartGambling.deposit((OfflinePlayer)loser, (double)machineData.bet);
+            double balance2 = SmartGambling.getBalance((OfflinePlayer)loser);
             loser.sendMessage(String.format(SmartGambling.getInstance().configManager.messages.get("moneyReceived"), machineData.bet, balance2));
         } else {
             int opponentValue;
@@ -348,8 +348,8 @@ public class BlackJack
                 opponentValue = machineData.player1Value;
             }
             float amountWon = machineData.bet * 2;
-            SmartGambling.getEconomy().depositPlayer((OfflinePlayer)winner, (double)amountWon);
-            double balance = SmartGambling.getEconomy().getBalance((OfflinePlayer)winner);
+            SmartGambling.deposit(winner, (double) amountWon);
+            double balance = SmartGambling.getBalance(winner);
             ConfigManager configManager = SmartGambling.getInstance().configManager;
             winner.sendMessage(String.format(configManager.messages.get("wonBlackJack"), value, opponentValue));
             loser.sendMessage(String.format(configManager.messages.get("lostBlackJack"), opponentValue, value));

@@ -6,7 +6,11 @@ import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.games.slots.objects.SlotItem;
 import me.arthed.smartgambling.games.slots.objects.rewards.Reward;
 import me.arthed.smartgambling.utils.DisplayUtils;
-import net.milkbowl.vault.economy.Economy;
+import me.trytofeel.rookiefonts.RookieFonts;
+import me.trytofeel.rookiefonts.entity.Template;
+import me.trytofeel.rookiefonts.manager.TemplateManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import nl.odalitadevelopments.menus.OdalitaMenus;
 import nl.odalitadevelopments.menus.annotations.Menu;
 import nl.odalitadevelopments.menus.contents.MenuContents;
@@ -29,8 +33,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 
 /**
@@ -85,14 +92,39 @@ public class OdalitaSlotMachine implements PlayerMenuProvider, Machine {
         OdalitaPlayerData data = new OdalitaPlayerData(displaySlots.size());
         playerData.put(player, data);
         
-        // 设置基础界面布局
-        setupBaseLayout(contents, player);
+//        // 设置基础界面布局
+//        setupBaseLayout(contents, player);
         
         // 设置按钮
         setupButtons(contents, player);
         
-        // 初始化显示槽位
+//         初始化显示槽位
         initializeDisplaySlots(contents, player);
+
+
+        TemplateManager templateManager = RookieFonts.getInstance().getTemplateManager();
+        // title
+        Template slotTemplate = templateManager.getTemplateHashMap().get("slot");
+        Map<String, Map<String, String>> playerPlaceholderHashMap = RookieFonts.getInstance().getPlayerPlaceholderHashMap();
+        Map<String, String> playerPapi = playerPlaceholderHashMap.get(player.getName());
+
+        if (playerPapi == null) {
+            Map<String, String> map = new HashMap<>();
+            map.put("%points%", "11113");
+            playerPlaceholderHashMap.put(player.getName(), map);
+            System.out.println("After (new): " + playerPlaceholderHashMap.get(player.getName()));
+        } else
+        {
+            playerPapi.put("%points%", "11113");
+            System.out.println("After (update): " + playerPlaceholderHashMap.get(player.getName()));
+        }
+
+        Component defaultComponentByString = (Component) slotTemplate.getDefaultComponent(player.getName());
+        final String jsonText = GsonComponentSerializer.gson().serialize(defaultComponentByString);
+        contents.setTitle(jsonText);
+
+
+
     }
     
     private void setupBaseLayout(MenuContents contents, Player player) {
@@ -270,21 +302,20 @@ public class OdalitaSlotMachine implements PlayerMenuProvider, Machine {
         }
         
         int bet = openInterface.betAmount;
-        Economy economy = SmartGambling.getEconomy();
         
-        if (economy.getBalance(player) < (double) bet) {
+        if (SmartGambling.getBalance(player) < (double) bet) {
             DisplayUtils.displayActionBar(player, String.format(
                 (String) SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), 
-                bet, economy.getBalance(player)));
+                bet, SmartGambling.getBalance(player)));
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
             return;
         }
         
         // 扣除金币
-        SmartGambling.getEconomy().withdrawPlayer(player, (double) bet);
+        SmartGambling.withdraw(player, (double) bet);
         player.sendMessage(String.format(
             (String) SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), 
-            bet, SmartGambling.getEconomy().getBalance(player)));
+            bet, SmartGambling.getBalance(player)));
         
         data.spinning = true;
         startOdalitaAnimation(contents, player);
@@ -414,8 +445,8 @@ public class OdalitaSlotMachine implements PlayerMenuProvider, Machine {
             }
             
             float amountWon = (float) Math.round((float) openInterface.betAmount * reward.moneyMultiplier);
-            SmartGambling.getEconomy().depositPlayer(player, (double) amountWon);
-            double balance = SmartGambling.getEconomy().getBalance(player);
+            SmartGambling.deposit(player, (double) amountWon);
+            double balance = SmartGambling.getBalance(player);
             
             DisplayUtils.displayActionBar(player, String.format(
                 (String) SmartGambling.getInstance().configManager.messages.get("wonMoneyActionBar"), 
