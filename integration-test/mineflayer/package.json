@@ -2,7 +2,7 @@
   "name": "smartgambling-mineflayer-integration",
   "version": "1.0.10",
   "private": true,
-  "description": "Isolated Paper 1.20.1 protocol-level integration tests for SmartGambling.",
+  "description": "Isolated Paper 1.21.4 protocol-level integration tests for SmartGambling.",
   "scripts": {
     "test": "node run.js"
   },

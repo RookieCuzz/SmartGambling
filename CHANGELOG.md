@@ -1,5 +1,13 @@
 # 更新日志
 
+## 未发布 - Paper 1.21.4 兼容升级
+
+- 构建基线切换为 Paper API 1.21.4，`plugin.yml` 精确声明 `api-version: 1.21.4`。
+- 修复 1.21.4 中 `EntityDismountEvent` 的 Bukkit API 包名迁移。
+- WorldGuard/WorldEdit 改用官方 1.21.4 兼容依赖，不再依赖仓库内旧版 JAR。
+- Mineflayer 协议与隔离 Paper 启动器升级到 1.21.4，并支持环境变量指定测试服。
+- CraftEngine 文档改为 1.21.4 原生 `item_model` 与 `pack_format: 46` 生成路径。
+
 ## 1.0.10-CE - 2026-08-12
 
 ### 新功能

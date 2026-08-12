@@ -22,7 +22,7 @@
 
 ## 安装
 
-目标环境为 Paper 1.20.1、Java 21、CraftEngine 26.7.4。
+目标环境为 Paper 1.21.4、Java 21、CraftEngine 26.7.4。
 
 1. 停止服务器并备份 `plugins/SmartGambling`。
 2. 安装 CraftEngine，首次启动一次以生成 `plugins/CraftEngine`。
@@ -40,18 +40,25 @@
 6. 确认客户端只接收一个最终合并资源包，不要让 ItemsAdder 与 CraftEngine
    分别发送互相竞争的材质包。
 
-Paper 1.20.1 上保持：
+Paper 1.21.4 上保持：
 
 ```yaml
 resource-pack:
   supported-version:
     min: server
+    max: server
+item:
+  always-use-item-model: true
+  always-use-custom-model-data: false
+  always-generate-model-overrides: false
 network:
   disable-item-operations: false
 ```
 
-不要为了这个包启用 `always-use-custom-model-data` 或
-`always-generate-model-overrides`。保留 CraftEngine 自动生成的
+CraftEngine 会为 1.21.4 自动生成 `pack_format: 46` 以及
+`assets/smartgambling/items/*.json`，不要在内容包里手写 `pack.mcmeta`。
+不要启用 `always-use-custom-model-data` 或 `always-generate-model-overrides`。
+保留 CraftEngine 自动生成的
 `cache/custom_model_data`，不要手工删除或修改。
 
 ## CE 物品配置

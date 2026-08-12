@@ -1,6 +1,6 @@
 # SmartGambling 1.0.10-CE 部署与验收指南
 
-本版本目标环境：Paper 1.20.1、Java 21、CraftEngine 26.7.4、Vault，以及一个
+本版本目标环境：Paper 1.21.4、Java 21、CraftEngine 26.7.4、Vault，以及一个
 Vault 经济实现。请先在测试服验收，不要直接替换生产服。
 
 ## 升级前
@@ -15,12 +15,17 @@ Vault 经济实现。请先在测试服验收，不要直接替换生产服。
    GitHub Release 下载同版本 JAR），确认旧 SmartGambling JAR 已移出
    `plugins`，避免同插件重复加载。
 
-CraftEngine 在 1.20.1 上应保持：
+CraftEngine 在 1.21.4 上应保持：
 
 ```yaml
 resource-pack:
   supported-version:
     min: server
+    max: server
+item:
+  always-use-item-model: true
+  always-use-custom-model-data: false
+  always-generate-model-overrides: false
 network:
   disable-item-operations: false
 ```
@@ -34,6 +39,10 @@ network:
 - 旧 `data.json` 升级为 dataVersion 3，并生成/更新 `data.json.bak`。
 - 无 PlaceholderAPI 时插件正常启动；安装 PlaceholderAPI 后 `%sg_*%` 只注册一次。
 - 客户端成功接收唯一的最终资源包，五种物理模型及 GUI 背景方向正常。
+- CE 生成包的 `pack.mcmeta` 使用 1.21.4 对应的 `pack_format: 46`，并生成
+  `assets/smartgambling/items/*.json` 物品模型定义。
+- 若安装可选集成，使用 PlaceholderAPI 2.11.7+、WorldGuard 7.0.13 和
+  WorldEdit 7.3.10 或明确支持 1.21.4 的更新版本。
 
 ## 四玩法冒烟
 

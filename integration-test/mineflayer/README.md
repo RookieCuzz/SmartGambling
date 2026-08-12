@@ -1,6 +1,6 @@
 # Mineflayer 集成测试
 
-该目录提供 Paper 1.20.1 的协议级黑盒测试。它会启动隔离服务端、连接多个
+该目录提供 Paper 1.21.4 的协议级黑盒测试。它会启动隔离服务端、连接多个
 离线模式机器人，并检查 GUI、下注账本、并发点击、退出/重连、机器持久化和
 中文创建向导。
 
@@ -9,7 +9,17 @@
 - Node.js 22+
 - `npm ci`
 - 本地隔离服目录 `server/`（已被 Git 忽略）
-- Paper 1.20.1、CraftEngine 26.7.4、Vault、经济实现和待测 JAR
+- Paper 1.21.4、Java 21、CraftEngine 26.7.4、Vault、明确支持 1.21.4 的经济实现和待测 JAR
+
+默认服务端目录为 `server/`，Paper 文件名为 `paper-1.21.4.jar`。也可以使用：
+
+```powershell
+$env:SMARTGAMBLING_SERVER_DIR = 'D:\test-servers\smartgambling-1.21.4'
+$env:SMARTGAMBLING_PAPER_JAR = 'paper-1.21.4-232.jar'
+$env:SMARTGAMBLING_MC_VERSION = '1.21.4'
+```
+
+请使用全新的隔离目录，不要让 1.21.4 原地升级既有 1.20.1 测试世界或账本。
 
 ```powershell
 cd integration-test/mineflayer

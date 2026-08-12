@@ -1,6 +1,6 @@
 # SmartGambling 1.0.10-CE
 
-SmartGambling 是面向 Paper 1.20.1 的多玩法赌场插件。本分支已将所有自定义
+SmartGambling 是面向 Paper 1.21.4 的多玩法赌场插件。本分支已将所有自定义
 物品从固定 `Material + CustomModelData` 迁移为 CraftEngine 稳定 ID，并加入
 SQLite 资金账本、dataVersion 3 机器仓库、事务化配置重载和中文 BossBar
 机器创建向导。
@@ -20,13 +20,13 @@ SQLite 资金账本、dataVersion 3 机器仓库、事务化配置重载和中�
 
 | 组件 | 要求 |
 | --- | --- |
-| 服务端 | Paper 1.20.1 |
+| 服务端 | Paper 1.21.4 |
 | Java | 21 |
 | CraftEngine | 26.7.4 |
 | Vault | 1.7.x |
 | 经济实现 | 任意正确注册到 Vault 的经济插件 |
-| PlaceholderAPI | 可选 |
-| WorldGuard | 可选 |
+| PlaceholderAPI | 可选，建议 2.11.7+ |
+| WorldGuard | 可选，1.21.4 建议 WorldGuard 7.0.13 + WorldEdit 7.3.10 |
 
 CraftEngine 和 Vault 是硬依赖。SmartGambling 会等待 CraftEngine 完成物品加载、
 且等待 Vault 经济提供者真正启用后，才开放玩法。
@@ -65,12 +65,17 @@ SQLite JDBC 会被打入最终 JAR；CraftEngine、Vault、PlaceholderAPI、Worl
    SmartGambling JAR，避免重复加载。
 6. 执行 `/ce reload all` 后重启服务器，让客户端加载唯一的最终资源包。
 
-Paper 1.20.1 上建议保持：
+Paper 1.21.4 上建议锁定服务端资源包格式，并保持 CE 物品网络转换开启：
 
 ```yaml
 resource-pack:
   supported-version:
     min: server
+    max: server
+item:
+  always-use-item-model: true
+  always-use-custom-model-data: false
+  always-generate-model-overrides: false
 network:
   disable-item-operations: false
 ```
@@ -156,7 +161,7 @@ Vault 调用前会先写入持久状态。明确未入账的款项可安全重�
 自动测试覆盖账本状态机、故障注入、玩法结算身份、配置校验和 dataVersion 3
 仓库；Mineflayer 用于 Paper 协议级的多玩家、GUI、创建向导、重连与持久化
 验证。Mineflayer 不会真正渲染资源包，因此 CE 模型朝向、GUI 像素对齐和字体
-仍需用原版 1.20.1 客户端做最终视觉验收。GUI 背景沿用原素材，部分
+仍需用原版 1.21.4 客户端做最终视觉验收。GUI 背景沿用原素材，部分
 图片仍可能含有英文装饰字样。
 
 2026-08-12 的最新 `mvn clean package` 结果为 19 个测试类、76 个用例，

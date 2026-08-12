@@ -17,7 +17,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.spigotmc.event.entity.EntityDismountEvent;
+import org.bukkit.event.entity.EntityDismountEvent;
 
 public class EntityListener implements Listener {
     private final SmartGambling smartGambling = SmartGambling.getInstance();

@@ -1,7 +1,7 @@
 name: SmartGambling
 version: '${project.version}'
 main: me.arthed.smartgambling.SmartGambling
-api-version: '1.20'
+api-version: '1.21.4'
 depend: [Vault, CraftEngine]
 softdepend: [WorldGuard, PlaceholderAPI]
 author: 'Styro457'

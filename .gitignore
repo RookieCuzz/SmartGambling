@@ -37,5 +37,6 @@ dist/
 integration-test/mineflayer/node_modules/
 integration-test/mineflayer/artifacts/
 integration-test/mineflayer/server/
+integration-test/mineflayer/server-*/
 integration-test/mineflayer/vendor/
 integration-test/mineflayer/.env

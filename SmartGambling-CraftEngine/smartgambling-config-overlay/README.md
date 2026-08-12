@@ -4,7 +4,7 @@
 的概率、奖励、价格、槽位、文本和实体偏移，不包含持久化 `data.json`。
 
 开始部署前请先阅读[项目 README](../../README.md)和[完整配置指南](../../CONFIGURATION.md)；
-CE 资源包结构与版本要求见[上级说明](../README.md)。目标环境为 Paper 1.20.1、
+CE 资源包结构与版本要求见[上级说明](../README.md)。目标环境为 Paper 1.21.4、
 Java 21、CraftEngine 26.7.4。
 
 ## 部署
@@ -14,8 +14,9 @@ Java 21、CraftEngine 26.7.4。
    `plugins/CraftEngine/resources/smartgambling`。
 3. 将本目录中的 `config.yml`、`placeholders.yml` 和 `machines` 复制到
    `plugins/SmartGambling`，允许覆盖旧 YAML。
-4. 保持 CraftEngine 的 `resource-pack.supported-version.min: server` 或
-   `1.20.1`，并保持 `network.disable-item-operations: false`。
+4. 将 CraftEngine 的 `resource-pack.supported-version.min/max` 都保持为
+   `server`（或都显式设为 `1.21.4`），并保持
+   `item.always-use-item-model: true`、`network.disable-item-operations: false`。
 5. 从 Maven 构建输出 `target/SmartGambling-1.0.10-CE.jar` 或项目 GitHub Release
    获取同版本插件 JAR。
 6. 执行 `/ce reload all`，确认所有 `smartgambling:*` ID 加载成功，然后重启。

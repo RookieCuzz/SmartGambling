@@ -9,7 +9,9 @@ const mineflayer = require('mineflayer')
 const { Vec3 } = require('vec3')
 
 const ROOT = __dirname
-const SERVER_DIR = path.join(ROOT, 'server')
+const SERVER_DIR = path.resolve(process.env.SMARTGAMBLING_SERVER_DIR || path.join(ROOT, 'server'))
+const MC_VERSION = process.env.SMARTGAMBLING_MC_VERSION || '1.21.4'
+const PAPER_JAR = process.env.SMARTGAMBLING_PAPER_JAR || 'paper-1.21.4.jar'
 const HOST = '127.0.0.1'
 const PORT = 25579
 const timestamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
@@ -95,6 +97,10 @@ class PaperServer {
 
   async start() {
     if (this.child && this.child.exitCode === null) throw new Error('Paper is already running')
+    const paperPath = path.join(SERVER_DIR, PAPER_JAR)
+    if (!fs.existsSync(paperPath)) {
+      throw new Error(`Paper ${MC_VERSION} JAR not found: ${paperPath}`)
+    }
     this.child = null
     this.lines = []
     const args = [
@@ -103,7 +109,7 @@ class PaperServer {
       '-Dfile.encoding=UTF-8',
       '-Dcom.mojang.eula.agree=true',
       '-jar',
-      'paper-1.20.1-build196.jar',
+      PAPER_JAR,
       '--nogui'
     ]
     this.child = spawn('java', args, {
@@ -249,7 +255,7 @@ class TestBot {
       port: PORT,
       username: this.name,
       auth: 'offline',
-      version: '1.20.1',
+      version: MC_VERSION,
       checkTimeoutInterval: 30_000
     })
     this.bot.on('resourcePack', () => {
