@@ -1,0 +1,137 @@
+images:
+  # Full 256x256 inventory backgrounds recovered from the original server pack.
+  smartgambling:slot_ui:
+    file: smartgambling:item/casino/slot
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue66c'
+  smartgambling:money_ui:
+    file: smartgambling:item/casino/bets
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue408'
+  smartgambling:blackjack_ui:
+    file: smartgambling:item/casino/blackjack
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue409'
+  smartgambling:crash_bet_ui:
+    file: smartgambling:item/casino/crash_bet
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue40a'
+  smartgambling:crash_crashed_ui:
+    file: smartgambling:item/casino/crash_crashed
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue40b'
+  smartgambling:crash_game_ui:
+    file: smartgambling:item/casino/crash_stop
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue40c'
+  smartgambling:jackpot_bet_ui:
+    file: smartgambling:item/casino/lottery_bets
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue40d'
+  smartgambling:jackpot_game_ui:
+    file: smartgambling:item/casino/lottery_start
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue40e'
+  smartgambling:blackjack_bet_ui:
+    file: smartgambling:item/casino/blackjack_bet
+    font: minecraft:default
+    height: 256
+    ascent: 19
+    char: '\ue6ca'
+
+  # Compact labels used by holograms in the original server setup.
+  smartgambling:slot_machine_title:
+    file: smartgambling:item/casino/slotmachine_title
+    font: minecraft:default
+    height: 20
+    ascent: 10
+    char: '\ue63e'
+  smartgambling:crash_machine_title:
+    file: smartgambling:item/casino/crashmachine_title
+    font: minecraft:default
+    height: 25
+    ascent: 15
+    char: '\ue63f'
+  smartgambling:blackjack_title:
+    file: smartgambling:item/casino/blackjack_title
+    font: minecraft:default
+    height: 20
+    ascent: 10
+    char: '\ue640'
+  smartgambling:jackpot_machine_title:
+    file: smartgambling:item/casino/lotterymachine_title
+    font: minecraft:default
+    height: 25
+    ascent: 15
+    char: '\ue641'
+
+  smartgambling:money:
+    file: smartgambling:font/icons/bank
+    font: minecraft:default
+    height: 10
+    ascent: 10
+    char: '\ue307'
+  smartgambling:legacy_money:
+    file: smartgambling:font/icons/money
+    font: minecraft:default
+    height: 9
+    ascent: 8
+    char: '\u360f'
+  smartgambling:fuhao1:
+    file: smartgambling:font/icons/fuhao1
+    font: minecraft:default
+    height: 9
+    ascent: 8
+    char: '\u9f4a'
+  smartgambling:fuhao3:
+    file: smartgambling:font/icons/fuhao3
+    font: minecraft:default
+    height: 9
+    ascent: 8
+    char: '\u9f19'
+
+emoji:
+  smartgambling:legacy_fuhao1:
+    image: smartgambling:fuhao1
+    keywords:
+      - ':fuhao1:'
+  smartgambling:legacy_fuhao3:
+    image: smartgambling:fuhao3
+    keywords:
+      - ':fuhao3:'
+  smartgambling:legacy_money_keyword:
+    image: smartgambling:money
+    keywords:
+      - ':mnoney:'
+  smartgambling:legacy_slot_keyword:
+    image: smartgambling:slot_ui
+    keywords:
+      - ':mctown_slotui:'
+  smartgambling:legacy_blackjack_keyword:
+    image: smartgambling:blackjack_ui
+    keywords:
+      - ':21points:'
+  smartgambling:legacy_blackjack_bet_keyword:
+    image: smartgambling:blackjack_bet_ui
+    keywords:
+      - ':21points_bet:'
+  smartgambling:legacy_bet_money_keyword:
+    image: smartgambling:money_ui
+    keywords:
+      - ':betmoney:'

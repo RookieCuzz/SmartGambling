@@ -1,0 +1,128 @@
+Messages:
+  prefix: '&f<image:smartgambling:fuhao3>'
+  noPermission: '%prefix% &f你没有权限使用此命令！'
+  reload: '%prefix% &f配置已成功重载！'
+  slotsAddCorrectUsage: '%prefix% &f用法：/sg add <机器类型>'
+  slotsAddStart: '%prefix% &f创建向导已启动，请使用选择棒设置机器位置。'
+  creationSessionExists: '%prefix% &e你已有一个进行中的机器创建向导，请先使用 /sg cancel 取消。'
+  creationWandNoSpace: '%prefix% &c背包至少需要一个空位才能领取创建选择棒。'
+  creationOriginSet: '%prefix% &a已将 &f%s %s %s &a设为机器原点，请右键添加交互方块。'
+  creationBlockAdded: '%prefix% &a已添加交互方块：&f%s %s %s&a。'
+  creationBlockRemoved: '%prefix% &e已移除交互方块：&f%s %s %s&e。'
+  creationNoOrigin: '%prefix% &c请先用选择棒左键设置机器原点。'
+  creationOtherWorld: '%prefix% &c所有交互方块必须与机器原点位于同一世界。'
+  creationTooFar: '%prefix% &c该方块超出了创建半径。'
+  creationLimit: '%prefix% &c已达到交互方块数量上限。'
+  creationAlreadySelected: '%prefix% &7该方块已经被选中。'
+  creationNotSelected: '%prefix% &7该方块不在当前选择中。'
+  creationRotated: '%prefix% &a预览朝向已旋转为 &f%s&a。'
+  creationTimedOut: '%prefix% &c机器创建向导已超时并自动取消。'
+  creationValidationFailed: '%prefix% &c无法创建机器：&f%s&c。当前选区已保留，可修正后再次确认。'
+  creationSummary: '%prefix% &a已创建 &f%s&a，原点 &f%s %s %s&a，朝向 &f%s&a，共 &f%s &a个交互方块。机器 ID：&f%s'
+  creationUndoAvailable: '%prefix% &7若位置有误，可使用 &f/sg undo &7安全撤销本次创建。'
+  creationNothingToUndo: '%prefix% &e当前没有可撤销的本次创建机器。'
+  creationUndoBlocked: '%prefix% &c该机器正在使用，或资金账本仍有活动/待处理记录，暂时无法撤销。'
+  creationUndoSuccess: '%prefix% &a已安全移除本次创建的上一台机器。'
+  selectBlockMessage: '%prefix% &f已添加方块：%s %s %s。'
+  cancelButton: '&c&l[取消] '
+  confirmButton: '&a&l[确认] '
+  click: '&7点击'
+  canceledRoutine: '%prefix% &c已取消机器创建向导。'
+  createdSlotMachine: '%prefix% &f机器创建成功！'
+  listSlots: '%prefix% &f当前区块中的机器：&8（使用 /sg list all 查看本世界全部机器）'
+  listAllSlots: '%prefix% &f当前世界中的机器：'
+  listSlotsNoResult: '%prefix% &f当前区块没有机器。'
+  listSlotsResult: '%prefix% &f机器 &e（%s）&f位于：&e%s&f。'
+  teleportButton: '&a&l[传送] '
+  removeButton: '&c&l[移除] '
+  idButton: '&9&l[复制 ID]'
+  removedSlotMachines: '%prefix% &f已移除 &e%s &f台机器！'
+  slotsRemoveCorrectUsage: '%prefix% &f用法：/sg remove <机器ID|all>'
+  chooseMoneyAmount: '%prefix% &f请在聊天栏输入下注金额：'
+  invalidMoneyAmount: '%prefix% &f金额无效，请输入一个数字：'
+  wonMoneyActionBar: '&a你赢得了 &e%s&f'
+  wonMoney: '&f你赢得了 &e%s&f！&f当前余额：&e%s&f'
+  moneyExtracted: '&c-%s&f。&f当前余额：&e%s&f'
+  moneyReceived: '&a+%s&f &f已退还。&f当前余额：&e%s&f'
+  notEnoughMoneyActionBar: '&f<image:smartgambling:fuhao1> &c你没有足够的钱'
+  machineAlreadyInUse: '&f<image:smartgambling:fuhao1> &c这台机器已经有人在玩了'
+  timeLeft: '&a距离比赛开始的剩余时间：'
+  jackpotWin: '%prefix% &e%s 在彩票中赢得了 &e%s&f！'
+  jackpotWinOwn: '%prefix% &f你在彩票中赢得了 &e%s&f！'
+  jackpotReminder: '%prefix% &f彩票将在 &e%s &f秒后开奖，使用 /jackpot 实时查看结果。'
+  jackpotNextGame: '%prefix% &f彩票将在 &e%s&f 后开奖。'
+  jackpotAlreadyStarted: '%prefix% &f本轮彩票已经开始。'
+  jackpotCooldown: '冷却中'
+  jackpotActive: '累积奖池：%s'
+  jackpotFinish: '开奖'
+  minutes: '分钟'
+  seconds: '秒'
+  jackpotCommandDeny: '%prefix% &f你不能在这里使用此命令！'
+  crashWin: '%prefix% &f你在 Crash 中赢得了 &e%s&f。&f你在 &e%s &f倍时兑现，最终爆点为 &e%s&f 倍。'
+  crashNextGame: '%prefix% &f游戏将在 &e%s&f 后开始。'
+  crashAlreadyStarted: '%prefix% &c本轮游戏已经开始。'
+  waitingForOpponent: '&c正在等待对手……'
+  wonBlackJack: '%prefix% &f你赢得了二十一点！你的点数为 &e%s&f，对手为 &e%s&f。'
+  lostBlackJack: '%prefix% &f你输掉了二十一点！你的点数为 &e%s&f，对手为 &e%s&f。'
+  opponentStopped: '已停牌'
+  opponentPlaying: '尚未停牌'
+  drawBlackJack: '%prefix% &f本局平局，双方点数均为 &e%s&f。'
+  drawBlackJackOver: '%prefix% &f本局平局，双方点数都超过了 21。'
+  blackjackAlreadyInUse: '&c这张牌桌已被占用。'
+
+helpMenu:
+  - '&8-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-'
+  - '&a&lSmartGambling 1.0.10-CE &r&7管理帮助'
+  - ''
+  - '&f使用 &r&e&l/sg reload &r&f重载配置'
+  - '&f使用 &r&e&l/sg add <机器类型> &r&f启动机器创建向导'
+  - '&f选择棒：左键设置原点，右键添加交互方块，潜行右键移除'
+  - '&f使用 &r&e&l/sg rotate <left|right> &r&f旋转实时预览'
+  - '&f使用 &r&e&l/sg confirm &r&f校验并创建，或使用 &r&e&l/sg cancel &r&f取消'
+  - '&f使用 &r&e&l/sg undo &r&f安全撤销本次创建的机器'
+  - '&f使用 &r&e&l/sg list &r&f列出当前区块中的机器'
+  - '&f使用 &r&e&l/sg remove <机器ID> &r&f移除指定机器'
+  - '&f使用 &r&e&l/sg remove all &r&f移除当前世界中的全部空闲机器'
+  - '&8-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-'
+
+
+Sounds:
+  slotsWin:
+    - BLOCK_NOTE_BLOCK_CHIME 2 1 0
+    - BLOCK_NOTE_BLOCK_CHIME 2 1.2 10
+    - BLOCK_NOTE_BLOCK_CHIME 2 1.4 10
+  rareWin:
+    - BLOCK_NOTE_BLOCK_BELL 2 0.8 0
+    - BLOCK_NOTE_BLOCK_BELL 2 1 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.2 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.4 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.6 5
+  jackpot:
+    - UI_TOAST_CHALLENGE_COMPLETE 1 1 0
+  lotteryWin:
+    - UI_TOAST_CHALLENGE_COMPLETE 1 1 0
+  crashWin:
+    - BLOCK_NOTE_BLOCK_BELL 2 0.8 0
+    - BLOCK_NOTE_BLOCK_BELL 2 1 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.2 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.4 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.6 5
+  blackjackWin:
+    - BLOCK_NOTE_BLOCK_BELL 2 0.8 0
+    - BLOCK_NOTE_BLOCK_BELL 2 1 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.2 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.4 5
+    - BLOCK_NOTE_BLOCK_BELL 2 1.6 5
+
+Chair:
+  craftEngineItem: smartgambling:casino_chair
+  Offset:
+    x: 2
+    y: -1
+    z: 0
+
+CreationGuide:
+  timeoutSeconds: 300
+  maxInteractionBlocks: 32
+  maxRadius: 16
+  previewIntervalTicks: 10

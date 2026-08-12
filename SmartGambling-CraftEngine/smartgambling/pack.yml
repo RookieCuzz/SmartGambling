@@ -1,0 +1,5 @@
+author: SmartGambling migration
+version: 1.1.0
+description: Complete SmartGambling casino assets recovered from the original server pack
+namespace: smartgambling
+enable: true

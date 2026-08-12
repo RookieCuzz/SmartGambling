@@ -19,9 +19,3 @@
 /* 19 */     return this.slots;
 /*    */   }
 /*    */ }
-
-
-/* Location:              D:\ChromeCoreDownloads\Smart Survival-4.6 Pre-Configured (1)\Update 4.6\plugins\SmartGambling.jar!\me\arthed\smartgambling\games\common\inventories\objects\Button.class
- * Java compiler version: 17 (61.0)
- * JD-Core Version:       1.1.3
- */

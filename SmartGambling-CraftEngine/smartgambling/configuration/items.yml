@@ -1,0 +1,148 @@
+items:
+  # The original pack used an invisible STICK/3 item over artwork drawn in the
+  # inventory title. All clickable GUI regions share this stable CE item.
+  smartgambling:gui_transparent:
+    material: stick
+    texture: smartgambling:item/placeholder/empty
+
+  # Reward-menu aliases intentionally reuse the slot reel models.
+  smartgambling:reward_seven:
+    material: stick
+    model: smartgambling:item/casino/seven
+  smartgambling:reward_cherries:
+    material: stick
+    model: smartgambling:item/casino/cherries
+  smartgambling:reward_lemon:
+    material: stick
+    model: smartgambling:item/casino/lemon
+  smartgambling:reward_plum:
+    material: stick
+    model: smartgambling:item/casino/plum
+  smartgambling:reward_melon:
+    material: stick
+    model: smartgambling:item/casino/melon
+  smartgambling:reward_star:
+    material: stick
+    model: smartgambling:item/casino/star
+  smartgambling:reward_orange:
+    material: stick
+    model: smartgambling:item/casino/orange
+  smartgambling:reward_grapes:
+    material: stick
+    model: smartgambling:item/casino/grapes
+
+  # Complete blackjack deck recovered from the original Smart Survival pack.
+  smartgambling:blackjack_red_ace:
+    material: stick
+    model: smartgambling:item/casino/acer
+  smartgambling:blackjack_red_2:
+    material: stick
+    model: smartgambling:item/casino/2r
+  smartgambling:blackjack_red_3:
+    material: stick
+    model: smartgambling:item/casino/3r
+  smartgambling:blackjack_red_4:
+    material: stick
+    model: smartgambling:item/casino/4r
+  smartgambling:blackjack_red_5:
+    material: stick
+    model: smartgambling:item/casino/5r
+  smartgambling:blackjack_red_6:
+    material: stick
+    model: smartgambling:item/casino/6r
+  smartgambling:blackjack_red_7:
+    material: stick
+    model: smartgambling:item/casino/7r
+  smartgambling:blackjack_red_8:
+    material: stick
+    model: smartgambling:item/casino/8r
+  smartgambling:blackjack_red_9:
+    material: stick
+    model: smartgambling:item/casino/9r
+  smartgambling:blackjack_red_10:
+    material: stick
+    model: smartgambling:item/casino/10r
+  smartgambling:blackjack_red_jack:
+    material: stick
+    model: smartgambling:item/casino/jr
+  smartgambling:blackjack_red_king:
+    material: stick
+    model: smartgambling:item/casino/kr
+  smartgambling:blackjack_red_queen:
+    material: stick
+    model: smartgambling:item/casino/qr
+  smartgambling:blackjack_black_ace:
+    material: stick
+    model: smartgambling:item/casino/aceb
+  smartgambling:blackjack_black_2:
+    material: stick
+    model: smartgambling:item/casino/2b
+  smartgambling:blackjack_black_3:
+    material: stick
+    model: smartgambling:item/casino/3b
+  smartgambling:blackjack_black_4:
+    material: stick
+    model: smartgambling:item/casino/4b
+  smartgambling:blackjack_black_5:
+    material: stick
+    model: smartgambling:item/casino/5b
+  smartgambling:blackjack_black_6:
+    material: stick
+    model: smartgambling:item/casino/6b
+  smartgambling:blackjack_black_7:
+    material: stick
+    model: smartgambling:item/casino/7b
+  smartgambling:blackjack_black_8:
+    material: stick
+    model: smartgambling:item/casino/8b
+  smartgambling:blackjack_black_9:
+    material: stick
+    model: smartgambling:item/casino/9b
+  smartgambling:blackjack_black_10:
+    material: stick
+    model: smartgambling:item/casino/10b
+  smartgambling:blackjack_black_jack:
+    material: stick
+    model: smartgambling:item/casino/jb
+  smartgambling:blackjack_black_king:
+    material: stick
+    model: smartgambling:item/casino/kb
+  smartgambling:blackjack_black_queen:
+    material: stick
+    model: smartgambling:item/casino/qb
+  smartgambling:blackjack_card_back:
+    material: stick
+    model: smartgambling:item/casino/flippedcard
+  smartgambling:blackjack_card_deck:
+    material: stick
+    model: smartgambling:item/casino/carddeck
+
+  # Eight complete slot reel items.
+  smartgambling:slot_cherries:
+    material: stick
+    model: smartgambling:item/casino/cherries
+  smartgambling:slot_grapes:
+    material: stick
+    model: smartgambling:item/casino/grapes
+  smartgambling:slot_lemon:
+    material: stick
+    model: smartgambling:item/casino/lemon
+  smartgambling:slot_melon:
+    material: stick
+    model: smartgambling:item/casino/melon
+  smartgambling:slot_orange:
+    material: stick
+    model: smartgambling:item/casino/orange
+  smartgambling:slot_plum:
+    material: stick
+    model: smartgambling:item/casino/plum
+  smartgambling:slot_star:
+    material: stick
+    model: smartgambling:item/casino/star
+  smartgambling:slot_seven:
+    material: stick
+    model: smartgambling:item/casino/seven
+
+  smartgambling:crash_player_display:
+    material: stick
+    model: smartgambling:item/casino/crash_stopped

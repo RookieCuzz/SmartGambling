@@ -1,93 +1,163 @@
-/*    */ package me.arthed.smartgambling.games.common.inventories;
-/*    */ 
-/*    */ import java.util.HashSet;
-/*    */ import me.arthed.smartgambling.SmartGambling;
-/*    */ import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
-/*    */ import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
-/*    */ import me.arthed.smartgambling.games.common.inventories.objects.Button;
-/*    */ import me.arthed.smartgambling.games.common.machine.OpenInterface;
-/*    */ import me.arthed.smartgambling.games.common.machine.OpenMachine;
-/*    */ import me.arthed.smartgambling.utils.DisplayUtils;
-/*    */ import net.milkbowl.vault.economy.Economy;
-/*    */ import org.bukkit.Bukkit;
-/*    */ import org.bukkit.OfflinePlayer;
-/*    */ import org.bukkit.Sound;
-/*    */ import org.bukkit.entity.Entity;
-/*    */ import org.bukkit.entity.Player;
-/*    */ import org.bukkit.event.inventory.InventoryClickEvent;
-/*    */ import org.bukkit.inventory.Inventory;
-/*    */ import org.bukkit.inventory.InventoryHolder;
-/*    */ import org.bukkit.inventory.ItemStack;
-/*    */ import org.bukkit.inventory.meta.ItemMeta;
-/*    */ 
-/*    */ public class ConfirmGameInventory
-/*    */   extends SubInventory
-/*    */ {
-/*    */   private final int confirmButton;
-/*    */   private final int declineButton;
-/*    */   
-/*    */   public ConfirmGameInventory(Inventory baseInventory, String inventoryTitle, InventoryAnimations animations, int confirmButton, int declineButton) {
-/* 30 */     super(baseInventory, inventoryTitle, animations, new Button(new HashSet()));
-/* 31 */     this.confirmButton = confirmButton;
-/* 32 */     this.declineButton = declineButton;
-/*    */   }
-/*    */ 
-/*    */   
-/*    */   public void open(Player player, OpenInterface openInterface) {
-/* 37 */     MachineDataBlackjack machineData = (MachineDataBlackjack)((OpenMachine)openInterface).machineData;
-/*    */     
-/* 39 */     Inventory playerInventory = Bukkit.createInventory((InventoryHolder)player, this.baseInventory.getSize(), this.inventoryTitle);
-/* 40 */     playerInventory.setContents(this.baseInventory.getContents());
-/*    */     
-/* 42 */     for (int i : new int[] { this.confirmButton, this.declineButton }) {
-/* 43 */       ItemStack button = playerInventory.getItem(i);
-/* 44 */       ItemMeta confirmMeta = button.getItemMeta();
-/* 45 */       confirmMeta.setDisplayName(confirmMeta.getDisplayName().replace("%bet%", "" + machineData.bet));
-/* 46 */       button.setItemMeta(confirmMeta);
-/*    */     } 
-/*    */     
-/* 49 */     this.oldInterfaces.put(player, openInterface);
-/*    */ 
-/*    */     
-/* 52 */     OpenInterface newInterface = new OpenInterface(this);
-/* 53 */     newInterface.inventory = playerInventory;
-/* 54 */     (SmartGambling.getInstance()).openMachines.put(player, newInterface);
-/*    */     
-/* 56 */     this.animations.startAnimations(playerInventory);
-/* 57 */     player.openInventory(playerInventory);
-/*    */
+package me.arthed.smartgambling.games.common.inventories;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import me.arthed.smartgambling.SmartGambling;
+import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
+import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
+import me.arthed.smartgambling.games.common.inventories.objects.Button;
+import me.arthed.smartgambling.games.common.machine.OpenInterface;
+import me.arthed.smartgambling.games.common.machine.OpenMachine;
+import me.arthed.smartgambling.utils.DisplayUtils;
+import me.arthed.smartgambling.utils.EconomyTransactions;
+import org.bukkit.Bukkit;
+import org.bukkit.Sound;
+import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+public class ConfirmGameInventory extends SubInventory {
+    private final int confirmButton;
+    private final int declineButton;
+    private final Set<UUID> closingPlayers = new HashSet<>();
+
+    public ConfirmGameInventory(
+            Inventory baseInventory,
+            String inventoryTitle,
+            InventoryAnimations animations,
+            int confirmButton,
+            int declineButton
+    ) {
+        super(baseInventory, inventoryTitle, animations, new Button(new HashSet<>()));
+        this.confirmButton = confirmButton;
+        this.declineButton = declineButton;
+    }
+
+    @Override
+    public void open(Player player, OpenInterface openInterface) {
+        if (!(openInterface instanceof OpenMachine openMachine)
+                || !(openMachine.machineData instanceof MachineDataBlackjack machineData)
+                || !machineData.canCommitChallenger(player)) {
+            return;
+        }
+
+        Inventory playerInventory = Bukkit.createInventory(
+                (InventoryHolder) player,
+                this.baseInventory.getSize(),
+                this.inventoryTitle
+        );
+        playerInventory.setContents(this.baseInventory.getContents());
+
+        for (int slot : new int[]{this.confirmButton, this.declineButton}) {
+            ItemStack button = playerInventory.getItem(slot);
+            if (button == null || !button.hasItemMeta()) {
+                continue;
+            }
+            ItemMeta meta = button.getItemMeta();
+            if (meta.hasDisplayName()) {
+                meta.setDisplayName(meta.getDisplayName().replace("%bet%", Integer.toString(machineData.bet)));
+                button.setItemMeta(meta);
+            }
+        }
+
+        this.closingPlayers.remove(player.getUniqueId());
+        this.oldInterfaces.put(player, openInterface);
+        OpenInterface newInterface = new OpenInterface(this);
+        newInterface.inventory = playerInventory;
+        SmartGambling.getInstance().openMachines.put(player, newInterface);
+        this.animations.startAnimations(playerInventory);
+        player.openInventory(playerInventory);
+    }
+
+    @Override
+    public void inventoryClick(InventoryClickEvent event) {
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)
+                || event.getClickedInventory() == null
+                || event.getClickedInventory() != event.getView().getTopInventory()) {
+            return;
+        }
+
+        OpenInterface current = SmartGambling.getInstance().openMachines.get(player);
+        if (current == null || current.machineType != this || current.inventory != event.getInventory()) {
+            return;
+        }
+        OpenInterface old = this.oldInterfaces.get(player);
+        if (!(old instanceof OpenMachine openMachine)
+                || !(openMachine.machineData instanceof MachineDataBlackjack machineData)) {
+            return;
+        }
+
+        if (event.getSlot() == this.confirmButton) {
+            int tableBet;
+            synchronized (machineData) {
+                if (!machineData.canCommitChallenger(player)
+                        || !EconomyTransactions.isValidAmount(machineData.bet)) {
+                    openMachine.betAmount = -1;
+                    this.close(player, event.getInventory());
+                    return;
+                }
+                tableBet = machineData.bet;
+            }
+
+            double balance = SmartGambling.getEconomy().getBalance(player);
+            if (balance < tableBet) {
+                DisplayUtils.displayActionBar(
+                        player,
+                        String.format(
+                                SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"),
+                                tableBet,
+                                balance
+                        )
+                );
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
+                return;
+            }
+
+            // BlackJack.open performs the actual checked withdrawal. Keeping
+            // the transaction there makes reservation -> withdrawal -> commit
+            // one atomic state transition.
+            openMachine.betAmount = tableBet;
+            this.close(player, event.getInventory());
+        } else if (event.getSlot() == this.declineButton) {
+            openMachine.betAmount = -1;
+            this.close(player, event.getInventory());
+        }
+    }
+
+    @Override
+    public void close(Player player, Inventory inventory) {
+        if (!this.closingPlayers.add(player.getUniqueId())) {
+            return;
+        }
+        super.close(player, inventory);
+        Bukkit.getScheduler().runTaskLater(
+                SmartGambling.getInstance(),
+                () -> this.closingPlayers.remove(player.getUniqueId()),
+                2L
+        );
+    }
+
+    @Override
+    public void forceClose(Player player) {
+        this.closingPlayers.remove(player.getUniqueId());
+        super.forceClose(player);
+    }
+
+    /** Removes a pending confirmation without returning to the table. */
+    public void discard(Player player) {
+        this.closingPlayers.remove(player.getUniqueId());
+        this.oldInterfaces.remove(player);
+        OpenInterface current = SmartGambling.getInstance().openMachines.get(player);
+        if (current != null && current.machineType == this) {
+            if (current.inventory != null) {
+                this.animations.stopAnimations(current.inventory);
+            }
+            SmartGambling.getInstance().openMachines.remove(player);
+        }
+    }
 }
-/*    */ 
-/*    */   
-/*    */   public void inventoryClick(InventoryClickEvent event) {
-/* 62 */     event.setCancelled(true);
-/* 63 */     if (event.getSlot() == this.confirmButton) {
-/* 64 */       Player player = (Player)event.getWhoClicked();
-/* 65 */       OpenMachine openMachine = (OpenMachine)this.oldInterfaces.get(event.getWhoClicked());
-/* 66 */       MachineDataBlackjack machineData = (MachineDataBlackjack)openMachine.machineData;
-/* 67 */       Economy economy = SmartGambling.getEconomy();
-/* 68 */       if (economy.getBalance((OfflinePlayer)player) < machineData.bet) {
-/* 69 */         DisplayUtils.displayActionBar(player, 
-/*    */             
-/* 71 */             String.format((String)(SmartGambling.getInstance()).configManager.messages.get("notEnoughMoneyActionBar"), new Object[] { Integer.valueOf(machineData.bet), Double.valueOf(economy.getBalance((OfflinePlayer)player)) }));
-/*    */         
-/* 73 */         player.playSound((Entity)player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
-/*    */         return;
-/*    */       } 
-/* 76 */       machineData.player2 = player;
-/* 77 */       openMachine.betAmount = machineData.bet;
-/* 78 */       close((Player)event.getWhoClicked(), event.getInventory());
-/*    */     }
-/* 80 */     else if (event.getSlot() == this.declineButton) {
-/* 81 */       OpenMachine openMachine = (OpenMachine)this.oldInterfaces.get(event.getWhoClicked());
-/* 82 */       openMachine.betAmount = -1;
-/* 83 */       close((Player)event.getWhoClicked(), event.getInventory());
-/*    */     } 
-/*    */   }
-/*    */ }
-
-
-/* Location:              D:\ChromeCoreDownloads\Smart Survival-4.6 Pre-Configured (1)\Update 4.6\plugins\SmartGambling.jar!\me\arthed\smartgambling\games\common\inventories\ConfirmGameInventory.class
- * Java compiler version: 17 (61.0)
- * JD-Core Version:       1.1.3
- */

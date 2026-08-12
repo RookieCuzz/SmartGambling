@@ -13,15 +13,18 @@ import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.logging.Level;
 import me.arthed.smartgambling.SmartGambling;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 public class WorldGuardImplementation {
-    private final Plugin owningPlugin = SmartGambling.getInstance();
+    private final Plugin owningPlugin;
     private Object worldGuard = null;
     private WorldGuardPlugin worldGuardPlugin = null;
     private Object regionContainer = null;
@@ -38,6 +41,7 @@ public class WorldGuardImplementation {
     }
 
     public WorldGuardImplementation(Plugin plugin, Plugin owningPlugin) {
+        this.owningPlugin = Objects.requireNonNull(owningPlugin, "owningPlugin");
         if (plugin instanceof WorldGuardPlugin) {
             this.worldGuardPlugin = (WorldGuardPlugin)plugin;
 
@@ -195,6 +199,75 @@ public class WorldGuardImplementation {
             }
         } else {
             return true;
+        }
+    }
+
+    /**
+     * Safely checks both the block and ArmorStand placement paths used by a
+     * physical machine. A broken enabled integration fails closed so a create
+     * operation cannot silently bypass region protection.
+     */
+    public boolean canBuild(Player player, Location location) {
+        if (this.worldGuardPlugin == null) {
+            return true;
+        }
+        if (player == null || location == null || location.getWorld() == null) {
+            return false;
+        }
+        try {
+            Material material = location.getBlock().getType();
+            com.sk89q.worldguard.bukkit.ProtectionQuery query =
+                    this.worldGuardPlugin.createProtectionQuery();
+            return query.testBlockPlace(player, location, material)
+                    && query.testEntityPlace(player, location, EntityType.ARMOR_STAND);
+        } catch (RuntimeException | LinkageError exception) {
+            this.owningPlugin.getLogger().log(
+                    Level.WARNING,
+                    "WorldGuard could not verify machine creation permission at " + location,
+                    exception
+            );
+            return false;
+        }
+    }
+
+    /** Checks selection blocks through the block operation path only. */
+    public boolean canSelectMachineBlock(Player player, org.bukkit.block.Block block) {
+        if (this.worldGuardPlugin == null) {
+            return true;
+        }
+        if (player == null || block == null || block.getWorld() == null) {
+            return false;
+        }
+        try {
+            return this.worldGuardPlugin.createProtectionQuery().testBlockBreak(player, block);
+        } catch (RuntimeException | LinkageError exception) {
+            this.owningPlugin.getLogger().log(
+                    Level.WARNING,
+                    "WorldGuard could not verify a selected machine block at " + block.getLocation(),
+                    exception
+            );
+            return false;
+        }
+    }
+
+    /** Checks a future ArmorStand position without requiring the underlying block to be replaceable. */
+    public boolean canPlaceMachineEntity(Player player, Location location) {
+        if (this.worldGuardPlugin == null) {
+            return true;
+        }
+        if (player == null || location == null || location.getWorld() == null) {
+            return false;
+        }
+        try {
+            return this.worldGuardPlugin.createProtectionQuery()
+                    .testEntityPlace(player, location, EntityType.ARMOR_STAND);
+        } catch (RuntimeException | LinkageError exception) {
+            this.owningPlugin.getLogger().log(
+                    Level.WARNING,
+                    "WorldGuard could not verify a machine entity at " + location,
+                    exception
+            );
+            return false;
         }
     }
 }

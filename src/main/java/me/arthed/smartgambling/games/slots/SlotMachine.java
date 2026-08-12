@@ -1,9 +1,21 @@
 package me.arthed.smartgambling.games.slots;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import me.arthed.smartgambling.SmartGambling;
+import me.arthed.smartgambling.economy.EconomyService;
+import me.arthed.smartgambling.economy.Money;
+import me.arthed.smartgambling.economy.PlaceResult;
+import me.arthed.smartgambling.economy.TxResult;
+import me.arthed.smartgambling.economy.WagerHandle;
+import me.arthed.smartgambling.economy.WagerKey;
+import me.arthed.smartgambling.economy.WagerResolution;
 import me.arthed.smartgambling.games.common.inventories.SubInventory;
 import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
@@ -13,7 +25,6 @@ import me.arthed.smartgambling.games.common.machine.OpenMachine;
 import me.arthed.smartgambling.games.slots.objects.SlotItem;
 import me.arthed.smartgambling.games.slots.objects.rewards.Reward;
 import me.arthed.smartgambling.utils.DisplayUtils;
-import me.clip.placeholderapi.PlaceholderAPI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -29,12 +40,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.logging.Level;
+
 public class SlotMachine implements Machine {
     public final String name;
     private final ItemStack machineItem;
     private final double[] entityOffset;
     private final Inventory baseInventory;
-    private final Inventory newInv;
     public final String inventoryTitle;
     private final List<List<Integer>> displaySlots;
     private final Button spinButton;
@@ -62,7 +74,6 @@ public class SlotMachine implements Machine {
         this.moneyButton = moneyButton;
         this.rewardsGuiButton = rewardsGuiButton;
         this.closeButton = closeButton;
-        this.newInv=baseInventory;
         this.rewardsGUI = rewardsGUI;
         this.itemsWeighed = itemsWeighed;
         this.itemsTotalWeight = itemsTotalWeight;
@@ -75,46 +86,82 @@ public class SlotMachine implements Machine {
     }
 
     public void open(Player player, OpenInterface openSlot) {
-        SmartGambling.getInstance().openMachines.put(player, openSlot);
-        OpenMachine openMachine = (OpenMachine)openSlot;
-        openMachine.machineData.inUse = true;
-
-        for(Entity e : openMachine.machineData.entities[0].getPassengers()) {
-            if (!e.equals(player)) {
-                openMachine.machineData.entities[0].removePassenger(e);
+        if (!(openSlot instanceof OpenMachine openMachine)) {
+            throw new IllegalArgumentException("Slot machine requires an OpenMachine context.");
+        }
+        SlotMachine.PlayerInventoryData unresolved = this.findUnresolvedWager(player);
+        if (unresolved != null) {
+            this.cancelTask(unresolved.settlementTask);
+            unresolved.settlementTask = null;
+            if (unresolved.wagerPending) {
+                if (unresolved.resultsReady && this.hasCompleteResult(unresolved)) {
+                    this.settleSpin(player, unresolved);
+                } else {
+                    this.refundWager(player, unresolved, "slot pending refund before reopen");
+                }
+                if (unresolved.wagerPending) {
+                    this.scheduleWagerRetry(player, unresolved);
+                    player.sendMessage(ChatColor.RED + "上一笔老虎机交易仍在处理中，请稍后再试。");
+                    return;
+                }
             }
         }
-
-        Location location = openMachine.machineData.entities[0].getLocation();
-        player.setRotation(location.getYaw(), location.getPitch());
-        if (!openMachine.machineData.entities[0].getPassengers().contains(player)) {
-            openMachine.machineData.entities[0].addPassenger(player);
+        if (openMachine.machineData == null
+                || openMachine.machineData.entities == null
+                || openMachine.machineData.entities.length == 0
+                || openMachine.machineData.entities[0] == null) {
+            throw new IllegalStateException("Slot machine '" + this.name + "' has no usable seat entity.");
         }
-
         if (openSlot.betAmount == 0) {
             openSlot.betAmount = this.defaultBet;
         }
-      //  String balance= PlaceholderAPI.setPlaceholders(player,"%vault_eco_balance_fixed%");
-        Inventory playerInventory = Bukkit.createInventory(player, this.baseInventory.getSize(), ":offset_-8::mctown_slotui::offset_-200:");
+        String title = this.inventoryTitle.replace("%bet%", String.valueOf(openSlot.betAmount));
+        Inventory playerInventory = Bukkit.createInventory(player, this.baseInventory.getSize(), title);
         playerInventory.setContents(this.baseInventory.getContents());
 
         for(int slot : this.spinButton.getSlots()) {
             ItemStack item = playerInventory.getItem(slot);
+            if (item == null) {
+                throw new IllegalStateException("Spin button slot " + slot + " is empty in slot machine '" + this.name + "'.");
+            }
             ItemMeta meta = item.getItemMeta();
-            if (meta.hasDisplayName()) {
+            if (meta != null && meta.hasDisplayName()) {
                 meta.setDisplayName(meta.getDisplayName().replace("%bet%", "" + openSlot.betAmount));
                 item.setItemMeta(meta);
                 playerInventory.setItem(slot, item);
             }
         }
 
+        SmartGambling.getInstance().openMachines.put(player, openSlot);
+        openMachine.machineData.inUse = true;
+        for (Entity passenger : openMachine.machineData.entities[0].getPassengers()) {
+            if (!passenger.equals(player)) {
+                openMachine.machineData.entities[0].removePassenger(passenger);
+            }
+        }
+        Location location = openMachine.machineData.entities[0].getLocation();
+        player.setRotation(location.getYaw(), location.getPitch());
+        if (!openMachine.machineData.entities[0].getPassengers().contains(player)) {
+            openMachine.machineData.entities[0].addPassenger(player);
+        }
+
         openSlot.inventory = playerInventory;
         this.animations.startAnimations(playerInventory);
 
-        this.playerInventoryData.put(player, new SlotMachine.PlayerInventoryData(new int[this.displaySlots.size()], new SlotItem[this.displaySlots.size()], new SlotItem[this.displaySlots.size()]));
-        OpeningPlayer openingPlayer = new OpeningPlayer(player);
-        SmartGambling.getInstance().getPlaybackManager().openingPlayers.put(player.getUniqueId(), openingPlayer);
-        player.openInventory(playerInventory);
+        this.playerInventoryData.put(player, new SlotMachine.PlayerInventoryData(
+                new int[this.displaySlots.size()],
+                new SlotItem[this.displaySlots.size()],
+                new SlotItem[this.displaySlots.size()],
+                openMachine.machineData.id,
+                UUID.randomUUID().toString()
+        ));
+        PlaybackManager.openingPlayers.computeIfAbsent(player.getUniqueId(), ignored -> new OpeningPlayer(player));
+        try {
+            player.openInventory(playerInventory);
+        } catch (RuntimeException exception) {
+            this.forceClose(player);
+            throw exception;
+        }
 
       //  return playerInventory;
     }
@@ -153,76 +200,91 @@ public class SlotMachine implements Machine {
     }
 
     public void close(Player player, Inventory inventory) {
-
-        SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-        if (invData != null && invData.spinning) {
-            Bukkit.getScheduler().runTask(SmartGambling.getInstance(), () -> player.openInventory(inventory));
-        } else {
-            this.playerInventoryData.remove(player);
-            OpenMachine openMachine = (OpenMachine)SmartGambling.getInstance().openMachines.get(player);
-            this.animations.stopAnimations(openMachine.inventory);
-            openMachine.machineData.inUse = false;
-            SmartGambling.getInstance().openMachines.remove(player);
-            PlaybackManager.removeOpeningPlayer(player);
+        SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
+        if (inventory != null && invData != null && invData.spinning && player.isOnline()) {
+            Bukkit.getScheduler().runTask(SmartGambling.getInstance(), () -> {
+                SlotMachine.PlayerInventoryData currentData = this.playerInventoryData.get(player);
+                if (player.isOnline() && currentData != null && currentData.spinning) {
+                    player.openInventory(inventory);
+                }
+            });
+            return;
         }
+        this.forceClose(player);
+    }
+
+    @Override
+    public void forceClose(Player player) {
+        SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
+        if (invData != null) {
+            invData.detached = true;
+            this.cancelTask(invData.spinEndTask);
+            this.cancelTask(invData.settlementTask);
+            invData.spinEndTask = null;
+            invData.settlementTask = null;
+            this.cancelAnimationTasks(invData);
+            Arrays.fill(invData.animationSpeed, 0);
+            invData.spinning = false;
+            if (invData.wagerPending) {
+                if (invData.resultsReady && this.hasCompleteResult(invData)) {
+                    this.settleSpin(player, invData);
+                } else {
+                    this.refundWager(player, invData, "slot spin interrupted before settlement");
+                }
+            }
+            if (invData.wagerPending) {
+                this.scheduleWagerRetry(player, invData);
+            } else {
+                this.playerInventoryData.remove(player, invData);
+            }
+        }
+
+        OpenInterface current = SmartGambling.getInstance().openMachines.remove(player);
+        if (current != null && current.inventory != null) {
+            this.animations.stopAnimations(current.inventory);
+        }
+        if (current instanceof OpenMachine openMachine && openMachine.machineData != null) {
+            openMachine.machineData.inUse = false;
+            if (openMachine.machineData.entities != null) {
+                for (Entity entity : openMachine.machineData.entities) {
+                    if (entity != null && entity.getPassengers().contains(player)) {
+                        entity.removePassenger(player);
+                    }
+                }
+            }
+        }
+        PlaybackManager.removeOpeningPlayer(player);
     }
     public void inventoryClick(InventoryClickEvent event) {
         event.setCancelled(true);
-        if (!((SlotMachine.PlayerInventoryData)this.playerInventoryData.get((Player)event.getWhoClicked())).spinning) {
+        if (!(event.getWhoClicked() instanceof Player player)
+                || event.getClickedInventory() == null
+                || event.getClickedInventory() != event.getView().getTopInventory()) {
+            return;
+        }
+        OpenInterface openInterface = SmartGambling.getInstance().openMachines.get(player);
+        SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
+        if (openInterface == null
+                || openInterface.machineType != this
+                || openInterface.inventory == null
+                || event.getView().getTopInventory() != openInterface.inventory
+                || invData == null) {
+            return;
+        }
+        if (!invData.spinning && !invData.wagerPending) {
             if (this.spinButton.isClicked(event.getSlot())) {
-                this.spin(event.getInventory(), (Player)event.getWhoClicked());
+                this.spin(openInterface.inventory, player);
             } else if (this.moneyButton.isClicked(event.getSlot())) {
-                SmartGambling.getInstance().moneyInventory.open((Player)event.getWhoClicked(), (OpenInterface)SmartGambling.getInstance().openMachines.get((Player)event.getWhoClicked()));
+                SmartGambling.getInstance().moneyInventory.open(player, openInterface);
             } else if (this.rewardsGuiButton.isClicked(event.getSlot())) {
-                this.rewardsGUI.open((Player)event.getWhoClicked(), (OpenInterface)SmartGambling.getInstance().openMachines.get((Player)event.getWhoClicked()));
+                this.rewardsGUI.open(player, openInterface);
             } else if (this.closeButton.isClicked(event.getSlot())) {
-                event.getWhoClicked().closeInventory();
+                player.closeInventory();
             }
 
         }
     }
 
-
-  /*  public void inventoryClick(InventoryClickEvent event) {
-        event.setCancelled(true);
-        Player player= (Player) event.getWhoClicked();
-        if (!((SlotMachine.PlayerInventoryData)this.playerInventoryData.get((Player)event.getWhoClicked())).spinning) {
-            if (this.spinButton.isClicked(event.getSlot())) {
-          //     changeInventoryTitle(event.getInventory(),"变了吗");
-                int bet = ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount;
-                SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-                {
-                    SmartGambling.getEconomy().withdrawPlayer(player, (double)bet);
-                    player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount, SmartGambling.getEconomy().getBalance(player)));
-                    invData.spinning = true;
-                //    player.closeInventory();
-                    Inventory inventory= open(player,(OpenInterface)SmartGambling.getInstance().openMachines.get(player));
-
-                    this.animations.startDependentAnimations(inventory);
-                    this.startAnimation(inventory, player);
-                    invData.spinEndTask = Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
-                        invData.spinning = false;
-                        this.animations.stopDependentAnimations(inventory);
-                        Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> this.stoppedSpinning(inventory, player), 8L);
-                    }, (long)(this.animationDuration + 21) + 6L * (long)this.displaySlots.size());
-                    player.sendMessage("我爱你");
-                }
-
-
-
-
-
-            //    this.spin(event.getInventory(), (Player)event.getWhoClicked());
-            } else if (this.moneyButton.isClicked(event.getSlot())) {
-                SmartGambling.getInstance().moneyInventory.open((Player)event.getWhoClicked(), (OpenInterface)SmartGambling.getInstance().openMachines.get((Player)event.getWhoClicked()));
-            } else if (this.rewardsGuiButton.isClicked(event.getSlot())) {
-                this.rewardsGUI.open((Player)event.getWhoClicked(), (OpenInterface)SmartGambling.getInstance().openMachines.get((Player)event.getWhoClicked()));
-            } else if (this.closeButton.isClicked(event.getSlot())) {
-                event.getWhoClicked().closeInventory();
-            }
-
-        }
-    } */
 
     public ItemStack getMachineItem() {
         return this.machineItem;
@@ -233,57 +295,477 @@ public class SlotMachine implements Machine {
     }
 
     public void spin(Inventory inventory, Player player) {
-        SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-        if (!invData.spinning) {
-            int bet = ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount;
-            Economy economy = SmartGambling.getEconomy();
-            if (economy.getBalance(player) < (double)bet) {
-                DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), bet, economy.getBalance(player)));
-                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
-            } else {
-                SmartGambling.getEconomy().withdrawPlayer(player, (double)bet);
-                player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), ((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount, SmartGambling.getEconomy().getBalance(player)));
-                invData.spinning = true;
-                this.animations.startDependentAnimations(inventory);
-                this.startAnimation(inventory, player);
-                invData.spinEndTask = Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
-                    invData.spinning = false;
+        SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
+        OpenInterface openInterface = SmartGambling.getInstance().openMachines.get(player);
+        if (invData == null
+                || invData.spinning
+                || invData.wagerPending
+                || !(openInterface instanceof OpenMachine openMachine)
+                || openInterface.machineType != this
+                || openInterface.inventory != inventory
+                || openMachine.machineData == null
+                || !invData.machineId.equals(openMachine.machineData.id)) {
+            return;
+        }
+
+        int bet = openInterface.betAmount;
+        if (bet <= 0) {
+            player.sendMessage(ChatColor.RED + "老虎机下注金额必须为正数。");
+            return;
+        }
+        Economy economy = SmartGambling.getEconomy();
+        double balance = economy.getBalance(player);
+        if (balance < (double)bet) {
+            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"), bet, balance));
+            player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
+            return;
+        }
+
+        WagerKey wagerKey = createWagerKey(
+                openMachine.machineData.id,
+                player.getUniqueId(),
+                invData.sessionId,
+                invData.nextSpinOrdinal()
+        );
+        PlaceResult placement;
+        try {
+            EconomyService economyService = SmartGambling.getInstance().getEconomyService();
+            if (economyService == null) {
+                player.sendMessage(ChatColor.RED + "资金账本当前不可用，本次旋转未开始。");
+                return;
+            }
+            placement = economyService.place(wagerKey, Money.of((long) bet));
+        } catch (RuntimeException exception) {
+            SmartGambling.getInstance().getLogger().log(
+                    Level.SEVERE,
+                    "Failed to journal slot wager for " + player.getName(),
+                    exception
+            );
+            player.sendMessage(ChatColor.RED + "资金账本当前不可用，本次旋转未开始。");
+            return;
+        }
+        if (placement == null) {
+            SmartGambling.getInstance().getLogger().severe(
+                    "EconomyService returned no placement result for slot player " + player.getName()
+            );
+            player.sendMessage(ChatColor.RED + "资金账本当前不可用，本次旋转未开始。");
+            return;
+        }
+        if (!placement.accepted() || placement.wager() == null) {
+            this.reportPlacementFailure(player, placement, bet, balance);
+            return;
+        }
+
+        invData.wager = placement.wager();
+        invData.wagerAmount = bet;
+        invData.wagerPending = true;
+        invData.resultsReady = false;
+        invData.spinning = true;
+        Arrays.fill(invData.finalItems, null);
+        try {
+            this.animations.startDependentAnimations(inventory);
+            this.startAnimation(inventory, player);
+            invData.spinEndTask = Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+                if (this.playerInventoryData.get(player) != invData || !invData.wagerPending) {
+                    return;
+                }
+                invData.spinEndTask = null;
+                invData.spinning = false;
+                invData.resultsReady = this.hasCompleteResult(invData);
+                try {
                     this.animations.stopDependentAnimations(inventory);
-                    Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> this.stoppedSpinning(inventory, player), 8L);
-                }, (long)(this.animationDuration + 21) + 6L * (long)this.displaySlots.size());
+                } catch (RuntimeException exception) {
+                    SmartGambling.getInstance().getLogger().log(Level.WARNING, "Failed to stop slot animation for " + player.getName(), exception);
+                }
+                if (!invData.resultsReady) {
+                    this.refundWager(player, invData, "slot result was incomplete");
+                    if (invData.wagerPending) {
+                        this.scheduleWagerRetry(player, invData);
+                    }
+                    return;
+                }
+                try {
+                    invData.settlementTask = Bukkit.getScheduler().runTaskLater(
+                            SmartGambling.getInstance(),
+                            () -> this.stoppedSpinning(inventory, player, invData),
+                            8L
+                    );
+                } catch (RuntimeException exception) {
+                    SmartGambling.getInstance().getLogger().log(Level.WARNING, "Failed to schedule slot settlement for " + player.getName(), exception);
+                    this.settleSpin(player, invData);
+                    if (invData.wagerPending) {
+                        this.scheduleWagerRetry(player, invData);
+                    }
+                }
+            }, (long)(this.animationDuration + 21) + 6L * (long)this.displaySlots.size());
+        } catch (RuntimeException exception) {
+            this.cancelAnimationTasks(invData);
+            Arrays.fill(invData.animationSpeed, 0);
+            invData.spinning = false;
+            invData.resultsReady = false;
+            this.refundWager(player, invData, "slot spin failed to start");
+            if (invData.wagerPending) {
+                this.scheduleWagerRetry(player, invData);
+            }
+            SmartGambling.getInstance().getLogger().log(Level.SEVERE, "Failed to start slot spin for " + player.getName(), exception);
+            return;
+        }
+        player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), bet, SmartGambling.getEconomy().getBalance(player)));
+    }
+
+    public void stoppedSpinning(Inventory inventory, Player player) {
+        SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
+        this.stoppedSpinning(inventory, player, invData);
+    }
+
+    private void stoppedSpinning(
+            Inventory inventory,
+            Player player,
+            SlotMachine.PlayerInventoryData invData
+    ) {
+        if (invData == null
+                || this.playerInventoryData.get(player) != invData
+                || !invData.wagerPending) {
+            return;
+        }
+        this.cancelTask(invData.settlementTask);
+        invData.settlementTask = null;
+        if (!invData.resultsReady || !this.hasCompleteResult(invData)) {
+            this.refundWager(player, invData, "slot settlement had no complete result");
+            if (invData.wagerPending) {
+                this.scheduleWagerRetry(player, invData);
+            }
+            return;
+        }
+        this.settleSpin(player, invData);
+        if (invData.wagerPending) {
+            this.scheduleWagerRetry(player, invData);
+        }
+    }
+
+    private void settleSpin(Player player, SlotMachine.PlayerInventoryData invData) {
+        if (!invData.wagerPending || invData.wager == null) {
+            return;
+        }
+        Reward reward;
+        try {
+            reward = this.checkRewards(invData.finalItems);
+        } catch (RuntimeException exception) {
+            invData.resultsReady = false;
+            this.refundWager(player, invData, "slot reward evaluation failed");
+            SmartGambling.getInstance().getLogger().log(Level.SEVERE, "Failed to evaluate slot result for " + player.getName(), exception);
+            return;
+        }
+
+        int wager = invData.wagerAmount;
+        long amountWon = reward == null ? 0L : Math.round((double)wager * reward.moneyMultiplier);
+        WagerResolution resolution = reward != null && amountWon > 0L
+                ? WagerResolution.payout(Money.of(amountWon))
+                : WagerResolution.loss();
+        String outcome = reward != null && amountWon > 0L ? "payout" : "loss";
+        TxResult result;
+        try {
+            EconomyService economyService = SmartGambling.getInstance().getEconomyService();
+            if (economyService == null) {
+                return;
+            }
+            result = economyService.resolve(
+                    wagerOperationId(invData.wager, outcome),
+                    invData.wager,
+                    resolution
+            );
+        } catch (RuntimeException exception) {
+            SmartGambling.getInstance().getLogger().log(
+                    Level.SEVERE,
+                    "Failed to journal slot " + outcome + " for " + player.getName(),
+                    exception
+            );
+            return;
+        }
+        if (!result.durable()) {
+            SmartGambling.getInstance().getLogger().warning(
+                    "Slot " + outcome + " is not durable for " + player.getName()
+                            + " (" + result.status() + "): " + result.detail()
+            );
+            return;
+        }
+
+        this.clearWager(invData);
+        if (reward == null) {
+            return;
+        }
+        boolean providerApplied = result.status() == TxResult.Status.DURABLE
+                || result.status() == TxResult.Status.ALREADY_APPLIED;
+        if (amountWon > 0L && player.isOnline() && providerApplied) {
+            try {
+                double currentBalance = SmartGambling.getEconomy().getBalance(player);
+                DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoneyActionBar"), amountWon, currentBalance));
+                player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoney"), amountWon, currentBalance));
+            } catch (RuntimeException exception) {
+                SmartGambling.getInstance().getLogger().log(
+                        Level.WARNING,
+                        "Slot payout was journaled, but its balance message failed for " + player.getName(),
+                    exception
+                );
+            }
+        } else if (amountWon > 0L && player.isOnline()) {
+            player.sendMessage(ChatColor.RED + "本次老虎机派奖已写入账本，但仍等待人工核对（"
+                    + result.status() + "）。");
+        }
+        if (reward.winningCommands != null) {
+            for(String command : reward.winningCommands) {
+                this.executeWinningCommand(player, command);
+            }
+        }
+        if (player.isOnline() && reward.sound != null) {
+            try {
+                reward.sound.play(player);
+            } catch (RuntimeException exception) {
+                SmartGambling.getInstance().getLogger().log(
+                        Level.WARNING,
+                        "Slot reward sound failed for " + player.getName(),
+                        exception
+                );
             }
         }
     }
 
-    public void stoppedSpinning(Inventory inventory, Player player) {
-        SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-        Reward reward = this.checkRewards(invData.finalItems);
-        if (reward != null) {
-            float amountWon = (float)Math.round((float)((OpenInterface)SmartGambling.getInstance().openMachines.get(player)).betAmount * reward.moneyMultiplier);
-            SmartGambling.getEconomy().depositPlayer(player, (double)amountWon);
-            double balance = SmartGambling.getEconomy().getBalance(player);
-            DisplayUtils.displayActionBar(player, String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoneyActionBar"), amountWon, balance));
-            player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("wonMoney"), amountWon, balance));
-            if (reward.winningCommands != null) {
-                for(String command : reward.winningCommands) {
-                    if (command.startsWith("message:")) {
-                        player.sendMessage(ChatColor.translateAlternateColorCodes('&', command.replace("message: ", "").replace("%player%", player.getName())));
-                    } else if (command.startsWith("bossbar")) {
-                        String[] data = command.split(": ");
-                        String[] bossbarData = data[0].split(" ");
-                        BarColor color = BarColor.valueOf(bossbarData[1].toUpperCase());
-                        BarStyle style = BarStyle.valueOf(bossbarData[2].toUpperCase());
-                        int seconds = Integer.parseInt(bossbarData[3]);
-                        DisplayUtils.displayBossBar(player, data[1].replace("%player%", player.getName()), color, style, seconds);
-                    } else {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.getName()));
-                    }
+    private void executeWinningCommand(Player player, String command) {
+        try {
+            if (command.startsWith("message:")) {
+                if (player.isOnline()) {
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', command.replace("message: ", "").replace("%player%", player.getName())));
                 }
+            } else if (command.startsWith("bossbar")) {
+                if (player.isOnline()) {
+                    String[] data = command.split(": ", 2);
+                    String[] bossbarData = data[0].split(" ");
+                    BarColor color = BarColor.valueOf(bossbarData[1].toUpperCase());
+                    BarStyle style = BarStyle.valueOf(bossbarData[2].toUpperCase());
+                    int seconds = Integer.parseInt(bossbarData[3]);
+                    DisplayUtils.displayBossBar(player, data[1].replace("%player%", player.getName()), color, style, seconds);
+                }
+            } else {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.getName()));
             }
-            player.closeInventory();
-            reward.sound.play(player);
+        } catch (RuntimeException exception) {
+            SmartGambling.getInstance().getLogger().log(Level.WARNING, "Failed to run slot reward command: " + command, exception);
         }
+    }
 
+    private boolean refundWager(Player player, SlotMachine.PlayerInventoryData invData, String reason) {
+        if (!invData.wagerPending) {
+            return true;
+        }
+        if (invData.wager == null) {
+            SmartGambling.getInstance().getLogger().severe(
+                    "Slot wager cache is missing its ledger handle for " + player.getName() + ": " + reason
+            );
+            return false;
+        }
+        TxResult result;
+        try {
+            EconomyService economyService = SmartGambling.getInstance().getEconomyService();
+            if (economyService == null) {
+                return false;
+            }
+            result = economyService.resolve(
+                    wagerOperationId(invData.wager, "refund"),
+                    invData.wager,
+                    WagerResolution.refund()
+            );
+        } catch (RuntimeException exception) {
+            SmartGambling.getInstance().getLogger().log(
+                    Level.SEVERE,
+                    "Failed to journal slot refund for " + player.getName() + ": " + reason,
+                    exception
+            );
+            return false;
+        }
+        if (!result.durable()) {
+            SmartGambling.getInstance().getLogger().warning(
+                    "Slot refund is not durable for " + player.getName() + " (" + result.status()
+                            + "): " + result.detail() + "; context=" + reason
+            );
+            return false;
+        }
+        this.clearWager(invData);
+        return true;
+    }
+
+    private void clearWager(SlotMachine.PlayerInventoryData invData) {
+        invData.wagerPending = false;
+        invData.wagerAmount = 0;
+        invData.resultsReady = false;
+        invData.wager = null;
+    }
+
+    private SlotMachine.PlayerInventoryData findUnresolvedWager(Player player) {
+        SlotMachine.PlayerInventoryData direct = this.playerInventoryData.get(player);
+        if (direct != null) {
+            return direct;
+        }
+        Player previous = null;
+        for (Player candidate : this.playerInventoryData.keySet()) {
+            if (candidate.getUniqueId().equals(player.getUniqueId())) {
+                previous = candidate;
+                break;
+            }
+        }
+        if (previous == null) {
+            return null;
+        }
+        SlotMachine.PlayerInventoryData data = this.playerInventoryData.remove(previous);
+        if (data != null) {
+            this.playerInventoryData.put(player, data);
+        }
+        return data;
+    }
+
+    private void scheduleWagerRetry(Player player, SlotMachine.PlayerInventoryData invData) {
+        this.cancelTask(invData.settlementTask);
+        if (!SmartGambling.getInstance().isEnabled()) {
+            return;
+        }
+        try {
+            invData.settlementTask = Bukkit.getScheduler().runTaskLater(
+                    SmartGambling.getInstance(),
+                    () -> {
+                        invData.settlementTask = null;
+                        if (invData.wagerPending) {
+                            if (invData.resultsReady && this.hasCompleteResult(invData)) {
+                                this.settleSpin(player, invData);
+                            } else {
+                                this.refundWager(player, invData, "slot pending refund retry");
+                            }
+                        }
+                        if (invData.wagerPending) {
+                            this.scheduleWagerRetry(player, invData);
+                            return;
+                        }
+                        if (invData.detached) {
+                            this.playerInventoryData.remove(player, invData);
+                        }
+                    },
+                    200L
+            );
+        } catch (RuntimeException exception) {
+            invData.settlementTask = null;
+            SmartGambling.getInstance().getLogger().log(
+                    Level.WARNING,
+                    "Could not schedule slot ledger retry for " + player.getName(),
+                    exception
+            );
+        }
+    }
+
+    private void reportPlacementFailure(Player player, PlaceResult placement, int bet, double balance) {
+        switch (placement.status()) {
+            case REJECTED -> {
+                DisplayUtils.displayActionBar(
+                        player,
+                        String.format(
+                                (String)SmartGambling.getInstance().configManager.messages.get("notEnoughMoneyActionBar"),
+                                bet,
+                                balance
+                        )
+                );
+                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, 1.0F, 1.0F);
+            }
+            case UNKNOWN -> player.sendMessage(
+                    ChatColor.RED + "本次老虎机扣款结果未知。核对完成前，您无法继续下注。"
+            );
+            case PLAYER_FROZEN -> player.sendMessage(
+                    ChatColor.RED + "您的账户存在未解决的资金交易，暂时无法继续下注。"
+            );
+            default -> player.sendMessage(
+                    ChatColor.RED + "资金账本当前不可用，本次旋转未开始。"
+            );
+        }
+        SmartGambling.getInstance().getLogger().warning(
+                "Slot wager was not accepted for " + player.getName() + " (" + placement.status()
+                        + "): " + placement.detail()
+        );
+    }
+
+    static WagerKey createWagerKey(
+            UUID machineId,
+            UUID playerId,
+            String sessionId,
+            long spinOrdinal
+    ) {
+        Objects.requireNonNull(machineId, "machineId");
+        Objects.requireNonNull(playerId, "playerId");
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("sessionId cannot be blank");
+        }
+        if (spinOrdinal <= 0L) {
+            throw new IllegalArgumentException("spinOrdinal must be positive");
+        }
+        return new WagerKey(
+                "slot",
+                machineId.toString(),
+                sessionId + ":" + spinOrdinal,
+                playerId,
+                "spin:" + spinOrdinal
+        );
+    }
+
+    static String wagerOperationId(WagerHandle wager, String outcome) {
+        Objects.requireNonNull(wager, "wager");
+        if (!"loss".equals(outcome) && !"payout".equals(outcome) && !"refund".equals(outcome)) {
+            throw new IllegalArgumentException("Unsupported slot wager outcome: " + outcome);
+        }
+        return "slot:" + wager.id() + ":" + outcome;
+    }
+
+    private boolean hasCompleteResult(SlotMachine.PlayerInventoryData invData) {
+        if (invData.finalItems.length == 0) {
+            return false;
+        }
+        for (SlotItem item : invData.finalItems) {
+            if (item == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void cancelTask(BukkitTask task) {
+        if (task != null && !task.isCancelled()) {
+            task.cancel();
+        }
+    }
+
+    private void cancelAnimationTasks(SlotMachine.PlayerInventoryData invData) {
+        for (BukkitTask task : new HashSet<>(invData.animationTasks)) {
+            this.cancelTask(task);
+        }
+        invData.animationTasks.clear();
+    }
+
+    private void scheduleAnimationTask(
+            Player player,
+            SlotMachine.PlayerInventoryData invData,
+            Runnable action,
+            long delay
+    ) {
+        if (!SmartGambling.getInstance().isEnabled()) {
+            return;
+        }
+        BukkitTask[] reference = new BukkitTask[1];
+        reference[0] = Bukkit.getScheduler().runTaskLater(
+                SmartGambling.getInstance(),
+                () -> {
+                    invData.animationTasks.remove(reference[0]);
+                    if (this.playerInventoryData.get(player) != invData) {
+                        return;
+                    }
+                    action.run();
+                },
+                Math.max(0L, delay)
+        );
+        invData.animationTasks.add(reference[0]);
     }
 
     private SlotItem getRandomItem() {
@@ -303,20 +785,27 @@ public class SlotMachine implements Machine {
         return maxReward;
     }
 
-    private void playSpinningMusic(Player player, boolean pitch) {
-        SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-        if (invData != null) {
+    private void playSpinningMusic(Player player, SlotMachine.PlayerInventoryData invData, boolean pitch) {
+        if (this.playerInventoryData.get(player) == invData && invData.animationSpeed.length > 0) {
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BELL, 0.5F, pitch ? 1.0F : 1.5F);
-            if (invData.animationSpeed[1] > 0) {
-                Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> this.playSpinningMusic(player, !pitch), invData.animationSpeed[3] == 1 ? 4L : (long)invData.animationSpeed[1] * 3L);
+            int speedIndex = Math.min(1, invData.animationSpeed.length - 1);
+            int pitchIndex = Math.min(3, invData.animationSpeed.length - 1);
+            if (invData.animationSpeed[speedIndex] > 0) {
+                this.scheduleAnimationTask(
+                        player,
+                        invData,
+                        () -> this.playSpinningMusic(player, invData, !pitch),
+                        invData.animationSpeed[pitchIndex] == 1
+                                ? 4L
+                                : (long)invData.animationSpeed[speedIndex] * 3L
+                );
             }
 
         }
     }
 
-    private void spinLine(int line, Inventory inventory, Player player) {
-        SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
-        if (invData != null) {
+    private void spinLine(int line, Inventory inventory, Player player, SlotMachine.PlayerInventoryData invData) {
+        if (this.playerInventoryData.get(player) == invData) {
             invData.finalItems[line] = invData.lastItems[line];
             invData.lastItems[line] = this.getRandomItem();
             inventory.setItem((Integer) ((List)this.displaySlots.get(line)).get(2), inventory.getItem((Integer) ((List)this.displaySlots.get(line)).get(1)));
@@ -328,7 +817,12 @@ public class SlotMachine implements Machine {
 
             player.playSound(player, Sound.BLOCK_BAMBOO_HIT, 0.02F, 0.5F);
             if (invData.animationSpeed[line] > 0) {
-                Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> this.spinLine(line, inventory, player), (long)invData.animationSpeed[line]);
+                this.scheduleAnimationTask(
+                        player,
+                        invData,
+                        () -> this.spinLine(line, inventory, player, invData),
+                        invData.animationSpeed[line]
+                );
             }
 
         }
@@ -341,21 +835,21 @@ public class SlotMachine implements Machine {
             invData.animationSpeed[i] = this.animationStartingSpeed;
         }
 
-        this.playSpinningMusic(player, true);
+        this.playSpinningMusic(player, invData, true);
 
         for(int i = 0; i < this.displaySlots.size(); ++i) {
             int k = i;
-            Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+            this.scheduleAnimationTask(player, invData, () -> {
                 int var10002 = invData.animationSpeed[k]--;
-                this.spinLine(k, inventory, player);
+                this.spinLine(k, inventory, player, invData);
             }, 2L * (long)i);
         }
 
         for(int j = 0; j < 2; ++j) {
-            Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+            this.scheduleAnimationTask(player, invData, () -> {
                 for(int i = 0; i < this.displaySlots.size(); ++i) {
                     int k = i;
-                    Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+                    this.scheduleAnimationTask(player, invData, () -> {
                         int var10002 = invData.animationSpeed[k]--;
                     }, 2L * (long)i);
                 }
@@ -363,12 +857,12 @@ public class SlotMachine implements Machine {
             }, (long)j * 4L);
         }
 
-        Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+        this.scheduleAnimationTask(player, invData, () -> {
             for(int j = 0; j < 3; ++j) {
-                Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+                this.scheduleAnimationTask(player, invData, () -> {
                     for(int i = 0; i < this.displaySlots.size(); ++i) {
                         int k = i;
-                        Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+                        this.scheduleAnimationTask(player, invData, () -> {
                             int var10002 = invData.animationSpeed[k]++;
                         }, 4L * (long)i);
                     }
@@ -377,10 +871,10 @@ public class SlotMachine implements Machine {
             }
 
         }, (long)this.animationDuration);
-        Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+        this.scheduleAnimationTask(player, invData, () -> {
             for(int i = 0; i < this.displaySlots.size(); ++i) {
                 int k = i;
-                Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
+                this.scheduleAnimationTask(player, invData, () -> {
                     invData.animationSpeed[k] = 0;
                     player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BIT, 2.0F, 1.0F);
                 }, 6L * (long)i);
@@ -394,14 +888,38 @@ public class SlotMachine implements Machine {
         public final int[] animationSpeed;
         public final SlotItem[] lastItems;
         public final SlotItem[] finalItems;
+        public final Set<BukkitTask> animationTasks = new HashSet<>();
         public boolean spinning = false;
+        public boolean resultsReady = false;
+        public boolean wagerPending = false;
+        public boolean detached = false;
+        public int wagerAmount = 0;
+        public final UUID machineId;
+        public final String sessionId;
+        public long spinOrdinal = 0L;
+        public WagerHandle wager;
         public BukkitTask spinEndTask;
+        public BukkitTask settlementTask;
 
-        private PlayerInventoryData(int[] animationSpeed, SlotItem[] lastItems, SlotItem[] finalItems) {
+        private PlayerInventoryData(
+                int[] animationSpeed,
+                SlotItem[] lastItems,
+                SlotItem[] finalItems,
+                UUID machineId,
+                String sessionId
+        ) {
             this.animationSpeed = animationSpeed;
             this.lastItems = lastItems;
             this.finalItems = finalItems;
+            this.machineId = Objects.requireNonNull(machineId, "machineId");
+            this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
+        }
+
+        private long nextSpinOrdinal() {
+            if (this.spinOrdinal == Long.MAX_VALUE) {
+                throw new IllegalStateException("Slot session exhausted its spin ordinal");
+            }
+            return ++this.spinOrdinal;
         }
     }
 }
- 

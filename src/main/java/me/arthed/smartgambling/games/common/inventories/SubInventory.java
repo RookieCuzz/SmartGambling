@@ -2,16 +2,12 @@ package me.arthed.smartgambling.games.common.inventories;
 
 import java.util.HashMap;
 import me.arthed.smartgambling.SmartGambling;
-import me.arthed.smartgambling.games.blackjack.OpenBlackjack;
 import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
 import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
-import me.arthed.smartgambling.games.common.machine.OpenMachine;
-import me.arthed.smartgambling.games.slots.SlotMachine;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
@@ -40,16 +36,6 @@ public class SubInventory
         Inventory playerInventory = Bukkit.createInventory((InventoryHolder)player, (int)this.baseInventory.getSize(), (String)this.inventoryTitle);
         playerInventory.setContents(this.baseInventory.getContents());
         this.oldInterfaces.put(player, openInterface);
-        if (!(openInterface instanceof OpenBlackjack)) {
-            openInterface.machineType.close(player, null);
-        }
-        if (openInterface instanceof OpenMachine) {
-            OpenMachine openMachine = (OpenMachine)openInterface;
-            if (openMachine.machineType instanceof SlotMachine) {
-                openMachine.machineData.inUse = true;
-                openMachine.machineData.entities[1].addPassenger((Entity)player);
-            }
-        }
         OpenInterface newInterface = new OpenInterface(this);
         newInterface.inventory = playerInventory;
         SmartGambling.getInstance().openMachines.put(player, newInterface);
@@ -60,16 +46,35 @@ public class SubInventory
     @Override
     public void close(Player player, Inventory inventory) {
         Bukkit.getScheduler().runTask((Plugin)SmartGambling.getInstance(), () -> {
-            OpenInterface oldInterface = this.oldInterfaces.get(player);
-            SmartGambling.getInstance().openMachines.remove(player);
+            OpenInterface oldInterface = this.oldInterfaces.remove(player);
+            OpenInterface current = SmartGambling.getInstance().openMachines.get(player);
+            if (current != null && current.machineType == this) {
+                if (current.inventory != null) {
+                    this.animations.stopAnimations(current.inventory);
+                }
+                SmartGambling.getInstance().openMachines.remove(player);
+            }
             if (oldInterface != null) {
                 if (oldInterface.betAmount == 0) {
                     oldInterface.betAmount = -1;
                 }
                 oldInterface.machineType.open(player, oldInterface);
             }
-            this.oldInterfaces.remove(player);
         });
+    }
+
+    @Override
+    public void forceClose(Player player) {
+        OpenInterface current = SmartGambling.getInstance().openMachines.remove(player);
+        if (current != null && current.machineType == this && current.inventory != null) {
+            this.animations.stopAnimations(current.inventory);
+        }
+
+        OpenInterface oldInterface = this.oldInterfaces.remove(player);
+        if (oldInterface != null) {
+            SmartGambling.getInstance().openMachines.put(player, oldInterface);
+            oldInterface.machineType.forceClose(player);
+        }
     }
 
     @Override

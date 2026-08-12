@@ -17,10 +17,15 @@
 /* 17 */       return false;
 /*    */     }
 /* 19 */     if (!(sender instanceof Player)) {
-/* 20 */       sender.sendMessage("" + ChatColor.RED + "Command can only be used by players.");
+/* 20 */       sender.sendMessage("" + ChatColor.RED + "此命令只能由游戏内玩家执行。");
 /* 21 */       return false;
 /*    */     } 
 /* 23 */     Player player = (Player)sender;
+/*    */     if ((SmartGambling.getInstance()).openMachines.containsKey(player)
+/*    */         || (SmartGambling.getInstance()).inputMoneyRoutine.playersInRoutine.contains(player)) {
+/*    */       player.sendMessage(ChatColor.RED + "请先关闭当前游戏，再打开大奖池。");
+/*    */       return true;
+/*    */     }
 /*    */     
 /* 25 */     if ((SmartGambling.getInstance()).worldGuard != null && !(SmartGambling.getInstance()).worldGuard.canUseJackpot(player)) {
 /* 26 */       sender.sendMessage((String)(SmartGambling.getInstance()).configManager.messages.get("jackpotCommandDeny"));
@@ -30,9 +35,3 @@
 /* 30 */     return true;
 /*    */   }
 /*    */ }
-
-
-/* Location:              D:\ChromeCoreDownloads\Smart Survival-4.6 Pre-Configured (1)\Update 4.6\plugins\SmartGambling.jar!\me\arthed\smartgambling\commands\JackpotCommand.class
- * Java compiler version: 17 (61.0)
- * JD-Core Version:       1.1.3
- */

@@ -1,0 +1,13 @@
+blackjack:
+  noPlayers: 'ʀᴇᴀᴅʏ ᴛᴏ ᴘʟᴀʏ'
+  choosingBet: 'ᴄʜᴏᴏꜱɪɴɢ ʙᴇᴛ'
+  waitingForOpponent: 'ᴡᴀɪᴛɪɴɢ ꜰᴏʀ ᴏᴘᴘᴏɴᴇɴᴛ (&e%bet%&f&7)'
+  playing: 'ᴍᴀᴛᴄʜ ɪɴ ᴘʀᴏɢʀᴇꜱꜱ (&e%bet%$&f&7)'
+jackpot:
+  cooldown: 'ᴛʜᴇ ᴊᴀᴄᴋᴘᴏᴛ ᴏᴘᴇɴꜱ ɪɴ: %time% ꜱᴇᴄᴏɴᴅꜱ'
+  active: 'ᴊᴀᴄᴋᴘᴏᴛ: %amount%&f &7| ᴘʟᴀʏᴇʀꜱ: %player_count%'
+  finish: 'ᴄʜᴏᴏꜱɪɴɢ ᴡɪɴɴᴇʀ...'
+crash:
+  cooldown: 'ᴛʜᴇ ᴄʀᴀꜱʜ ᴏᴘᴇɴꜱ ɪɴ: %time% ꜱᴇᴄᴏɴᴅꜱ'
+  betting: 'ᴛʜᴇ ᴍᴀᴛᴄʜ ꜱᴛᴀʀᴛꜱ ɪɴ: %time% ꜱᴇᴄᴏɴᴅꜱ'
+  crashing: 'ɪɴᴄʀᴇꜱɪɴɢ: %value%x | %player_crashed_count%/%player_count% ᴘʟᴀʏᴇʀꜱ ꜱᴛᴏᴘᴘᴇᴅ'

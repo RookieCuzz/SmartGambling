@@ -1,0 +1,32 @@
+items:
+  # SmartGambling equips these CE items on its own persistent ArmorStands. The
+  # recovered JSON files all contain the original `display.head` transforms.
+  smartgambling:slot_machine:
+    material: stick
+    data:
+      item_name: '<!i><gold>Slot Machine'
+    model: smartgambling:item/casino/slotmachine
+
+  smartgambling:casino_chair:
+    material: stick
+    data:
+      item_name: '<!i><gold>Casino Chair'
+    model: smartgambling:item/casino/chair
+
+  smartgambling:blackjack_table:
+    material: stick
+    data:
+      item_name: '<!i><gold>Blackjack Table'
+    model: smartgambling:item/casino/blackjacktable
+
+  smartgambling:crash_machine:
+    material: stick
+    data:
+      item_name: '<!i><gold>Crash Machine'
+    model: smartgambling:item/casino/crashgame
+
+  smartgambling:jackpot_machine:
+    material: stick
+    data:
+      item_name: '<!i><gold>Jackpot Machine'
+    model: smartgambling:item/casino/lotterymachine

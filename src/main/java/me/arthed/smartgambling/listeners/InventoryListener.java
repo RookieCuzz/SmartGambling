@@ -2,24 +2,52 @@ package me.arthed.smartgambling.listeners;
 
 import me.arthed.smartgambling.SmartGambling;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.inventory.Inventory;
+import org.bukkit.event.inventory.InventoryDragEvent;
 
 public class InventoryListener implements Listener {
     private final SmartGambling smartGambling = SmartGambling.getInstance();
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (this.smartGambling.openMachines.containsKey((Player)event.getWhoClicked())) {
-            ((OpenInterface)this.smartGambling.openMachines.get((Player)event.getWhoClicked())).machineType.inventoryClick(event);
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        OpenInterface openInterface = this.smartGambling.openMachines.get(player);
+        if (openInterface == null
+                || openInterface.inventory == null
+                || event.getView().getTopInventory() != openInterface.inventory) {
+            return;
         }
 
+        event.setCancelled(true);
+        if (event.getClickedInventory() == null
+                || event.getClickedInventory() != event.getView().getTopInventory()) {
+            return;
+        }
+        openInterface.machineType.inventoryClick(event);
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        OpenInterface openInterface = this.smartGambling.openMachines.get(player);
+        if (openInterface == null
+                || openInterface.inventory == null
+                || event.getView().getTopInventory() != openInterface.inventory) {
+            return;
+        }
+        int topSize = event.getView().getTopInventory().getSize();
+        if (event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
@@ -30,17 +58,10 @@ public class InventoryListener implements Listener {
             if (this.smartGambling.openMachines.containsKey(player)) {
                 OpenInterface openSlot2;
                 openSlot2 = (OpenInterface)this.smartGambling.openMachines.get(player);
-                if (event.getInventory().equals(openSlot2.inventory)) {
+                if (event.getInventory() == openSlot2.inventory) {
                     openSlot2.machineType.close(player, event.getInventory());
                 }
 
-                Bukkit.getScheduler().runTaskLater(SmartGambling.getInstance(), () -> {
-                    if (player.getOpenInventory() == null && this.smartGambling.openMachines.containsKey(player)) {
-                        ((OpenInterface)this.smartGambling.openMachines.get(player)).machineType.close(player, (Inventory)null);
-                        this.smartGambling.openMachines.remove(player);
-                    }
-
-                }, 200L);
             }
         }
 

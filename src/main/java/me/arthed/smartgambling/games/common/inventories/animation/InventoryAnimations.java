@@ -28,7 +28,7 @@
 /* 27 */     List<BukkitTask> tasks = new ArrayList<>();
 /* 28 */     for (ItemAnimation animation : this.itemAnimations) {
 /* 29 */       ItemAnimation currentAnimation = animation;
-/* 30 */       BukkitTask task = Bukkit.getScheduler().runTaskTimerAsynchronously((Plugin)SmartGambling.getInstance(), () -> animateItem(inventory, currentAnimation), 0L, animation.delay);
+/* 30 */       BukkitTask task = Bukkit.getScheduler().runTaskTimer((Plugin)SmartGambling.getInstance(), () -> animateItem(inventory, currentAnimation), 0L, animation.delay);
 /*    */ 
 /*    */       
 /* 33 */       tasks.add(task);
@@ -68,7 +68,7 @@
 /* 67 */     for (ItemAnimation animation : this.dependentItemAnimations) {
 /* 68 */       if (animation.delay > 0) {
 /* 69 */         ItemAnimation currentAnimation = animation;
-/* 70 */         tasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously((Plugin)SmartGambling.getInstance(), () -> animateItem(inventory, currentAnimation), 0L, animation.delay));
+/* 70 */         tasks.add(Bukkit.getScheduler().runTaskTimer((Plugin)SmartGambling.getInstance(), () -> animateItem(inventory, currentAnimation), 0L, animation.delay));
 /*    */       } 
 /*    */     } 
 /*    */ 
@@ -87,7 +87,7 @@
 /*    */   private void animateItem(Inventory inventory, ItemAnimation animation) {
 /* 87 */     for (Iterator<Integer> iterator = animation.slots.iterator(); iterator.hasNext(); ) { int slot = ((Integer)iterator.next()).intValue();
 /* 88 */       ItemStack item = inventory.getItem(slot);
-/* 89 */       assert item != null;
+/* 89 */       if (item == null) continue;
 /* 90 */       if (!animation.materials.contains(item.getType())) {
 /* 91 */         item.setType(animation.materials.get(slot % animation.vary)); continue;
 /*    */       } 
@@ -96,9 +96,3 @@
 /*    */   
 /*    */   }
 /*    */ }
-
-
-/* Location:              D:\ChromeCoreDownloads\Smart Survival-4.6 Pre-Configured (1)\Update 4.6\plugins\SmartGambling.jar!\me\arthed\smartgambling\games\common\inventories\animation\InventoryAnimations.class
- * Java compiler version: 17 (61.0)
- * JD-Core Version:       1.1.3
- */

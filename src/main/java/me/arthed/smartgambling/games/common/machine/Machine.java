@@ -11,6 +11,15 @@ public interface Machine {
 
   public void close(Player var1, Inventory var2);
 
+  /**
+   * Closes an interface without reopening or returning to a parent menu.
+   * Used for disconnects and plugin shutdown where a normal InventoryCloseEvent
+   * would otherwise keep an in-progress game open.
+   */
+  default void forceClose(Player player) {
+    this.close(player, null);
+  }
+
   public void inventoryClick(InventoryClickEvent var1);
 
   public ItemStack getMachineItem();

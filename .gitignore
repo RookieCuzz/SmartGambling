@@ -1,0 +1,41 @@
+# Maven / Java build outputs
+target/
+*.class
+*.log
+hs_err_pid*
+
+# IDE and operating-system files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+
+# Local runtime data and transient files
+*.tmp
+*.bak
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.lck
+
+# Local dependency copies that are resolved by Maven
+lib/PlaceholderAPI*.jar
+
+# Private/reference inputs that are not part of the distributable source
+Smart Survival Server.zip
+odalitamenu框架核心代码和菜单案例/
+
+# Built release binaries. Publish these through GitHub Releases instead.
+dist/
+
+# Mineflayer dependencies, artifacts and isolated Paper test server
+integration-test/mineflayer/node_modules/
+integration-test/mineflayer/artifacts/
+integration-test/mineflayer/server/
+integration-test/mineflayer/vendor/
+integration-test/mineflayer/.env
