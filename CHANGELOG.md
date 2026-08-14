@@ -7,6 +7,7 @@
 - WorldGuard/WorldEdit 改用官方 1.21.4 兼容依赖，不再依赖仓库内旧版 JAR。
 - Mineflayer 协议与隔离 Paper 启动器升级到 1.21.4，并支持环境变量指定测试服。
 - CraftEngine 文档改为 1.21.4 原生 `item_model` 与 `pack_format: 46` 生成路径。
+- 修复老虎机 Wild 无法替代类别奖励成员及 `exact` 组合匹配方向错误，并新增判奖回归测试。
 
 ## 1.0.10-CE - 2026-08-12
 

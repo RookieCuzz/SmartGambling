@@ -32,7 +32,7 @@ public class ExactMatchReward extends Reward {
 
     public boolean check(SlotItem[] itemsOnLine, int startingLine) {
         for(int i = 0; i < this.requiredCombination.length; ++i) {
-            if (!this.requiredCombination[i].isEquivalent(itemsOnLine[startingLine + i])) {
+            if (!itemsOnLine[startingLine + i].matchesRequirement(this.requiredCombination[i])) {
                 return false;
             }
         }
@@ -40,4 +40,3 @@ public class ExactMatchReward extends Reward {
         return true;
     }
 }
- 

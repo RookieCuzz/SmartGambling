@@ -34,11 +34,7 @@ public class RowReward extends Reward {
 
     public boolean check(SlotItem[] itemsOnLine, int startingLine) {
         for(int i = 0; i < this.amount; ++i) {
-            if (this.item.itemStack == null) {
-                if (!this.item.isEquivalent(itemsOnLine[startingLine + i])) {
-                    return false;
-                }
-            } else if (!itemsOnLine[startingLine + i].isEquivalent(this.item)) {
+            if (!itemsOnLine[startingLine + i].matchesRequirement(this.item)) {
                 return false;
             }
         }
