@@ -13,6 +13,7 @@ import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.common.sound.CustomSound;
 import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
+import me.arthed.smartgambling.games.poker.Poker;
 import me.arthed.smartgambling.handlers.PlaceholderMessages;
 import me.arthed.smartgambling.creation.CreationGuideSettings;
 import org.bukkit.inventory.ItemStack;
@@ -34,6 +35,7 @@ public record RuntimeState(
         JackpotMachine jackpotMachine,
         CrashMachine crashMachine,
         BlackJack blackJack,
+        Poker poker,
         PlaceholderMessages placeholderMessages,
         CreationGuideSettings creationGuideSettings,
         ForcedSlotTestSettings forcedSlotTestSettings,
@@ -63,6 +65,7 @@ public record RuntimeState(
                 plugin.jackpotMachine,
                 plugin.crashMachine,
                 plugin.blackJack,
+                plugin.poker,
                 plugin.configManager.getPlaceholderMessages(),
                 plugin.configManager.getCreationGuideSettings(),
                 plugin.configManager.getForcedSlotTestSettings(),
@@ -81,6 +84,7 @@ public record RuntimeState(
         plugin.jackpotMachine = this.jackpotMachine;
         plugin.crashMachine = this.crashMachine;
         plugin.blackJack = this.blackJack;
+        plugin.poker = this.poker;
         plugin.configManager.applyPlaceholderMessages(this.placeholderMessages);
         plugin.configManager.applyCreationGuideSettings(this.creationGuideSettings);
         plugin.configManager.applyForcedSlotTestSettings(this.forcedSlotTestSettings);

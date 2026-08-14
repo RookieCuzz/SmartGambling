@@ -550,13 +550,14 @@ async function runMachineCreation(server, admin) {
     ['SlotMachine', new Vec3(0, 80, 0)],
     ['blackjack', new Vec3(8, 80, 0)],
     ['crash', new Vec3(16, 80, 0)],
-    ['lottery', new Vec3(24, 80, 0)]
+    ['lottery', new Vec3(24, 80, 0)],
+    ['poker', new Vec3(32, 80, 0)]
   ]
   const created = []
   for (const [type, position] of specs) created.push(await createMachine(server, admin, type, position))
   const data = readJson(path.join(SERVER_DIR, 'plugins', 'SmartGambling', 'data.json'))
   assert(data.dataVersion === 3, `expected dataVersion=3, got ${data.dataVersion}`)
-  assert(created.length === 4 && machinesFromData().length === 4, 'four durable machines were expected')
+  assert(created.length === 5 && machinesFromData().length === 5, 'five durable machines were expected')
   return Object.fromEntries(specs.map(([type, position], index) => [type, { position, data: created[index] }]))
 }
 
@@ -790,6 +791,42 @@ async function testBlackjack(server, host, challenger, machine) {
   await challenger.closeWindow()
 }
 
+async function testPoker(server, host, challenger, machine) {
+  const before = ledgerSnapshot()
+  await openPhysical(server, host, machine.position, 45)
+  await host.click(9)
+  await waitUntil(() => newWagersSince(before, 'poker').length === 1,
+    10_000, 'poker host buy-in')
+
+  await openPhysical(server, challenger, machine.position, 27)
+  await challenger.click(11)
+  await waitUntil(() => newWagersSince(before, 'poker').length === 2,
+    10_000, 'poker challenger buy-in')
+  await waitUntil(() => host.bot.currentWindow?.inventoryStart === 45
+      && challenger.bot.currentWindow?.inventoryStart === 45,
+    10_000, 'both poker table views')
+
+  // In heads-up play the dealer/small blind (host) acts first preflop.
+  await host.click(36)
+  const wagers = await waitUntil(() => {
+    const rows = newWagersSince(before, 'poker')
+    return rows.length === 2 && rows.every((row) => row.state === 'CLOSED') ? rows : null
+  }, 20_000, 'poker fold settlement')
+  const transactions = assertCleanTerminalWagers(wagers, 2)
+  assert(transactions.filter((row) => row.purpose === 'LOCK' && row.state === 'APPLIED').length === 2,
+    'poker must atomically lock both buy-ins')
+  const stakes = transactions.filter((row) => row.purpose === 'STAKE')
+    .reduce((sum, row) => sum + Number(row.amount), 0)
+  const credits = transactions.filter((row) => ['REFUND', 'PAYOUT'].includes(row.purpose))
+    .reduce((sum, row) => sum + Number(row.amount), 0)
+  assert(stakes === 200 && credits === 200,
+    `poker must conserve both 100 buy-ins; stakes=${stakes}, credits=${credits}`)
+  assert(wagers.every((row) => row.resolution_type === 'PAYOUT'),
+    `fold settlement must return each player's remaining stack: ${JSON.stringify(wagers)}`)
+  await host.closeWindow()
+  await challenger.closeWindow()
+}
+
 async function testCrashRefund(server, player, machine) {
   const before = ledgerSnapshot()
   const money = await openBettingPhase(server, player, machine.position)
@@ -870,8 +907,8 @@ async function testJackpot(players) {
 
 async function testPersistenceRestart(server, admin, beforeText, beforeMachines) {
   const afterStartMachines = machinesFromData()
-  assert(beforeMachines.length === 4 && afterStartMachines.length === 4,
-    'restart must preserve all four machines')
+  assert(beforeMachines.length === 5 && afterStartMachines.length === 5,
+    'restart must preserve all five machines')
   assert(JSON.stringify(machineIdentity(afterStartMachines)) === JSON.stringify(machineIdentity(beforeMachines)),
     'restart must preserve machine IDs, roles, and entity UUIDs')
 
@@ -1091,6 +1128,8 @@ async function main() {
       () => testSlot(server, admin, botA, botB, machines.SlotMachine))
     await runCase(report, 'blackjack: two-player equal stake, atomic lock and settlement',
       () => testBlackjack(server, botB, botC, machines.blackjack))
+    await runCase(report, 'poker: heads-up equal buy-ins, blinds, fold and conserved settlement',
+      () => testPoker(server, botB, botC, machines.poker))
     await runCase(report, 'crash: explicit bet removal refunds durably',
       () => testCrashRefund(server, botA, machines.crash))
     await runCase(report, 'crash: cashout-vs-crash rapid-click race resolves exactly once',

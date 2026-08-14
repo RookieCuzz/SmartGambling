@@ -18,6 +18,8 @@ import java.util.logging.Level;
 import me.arthed.smartgambling.SmartGambling;
 import me.arthed.smartgambling.games.blackjack.BlackJack;
 import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
+import me.arthed.smartgambling.games.poker.MachineDataPoker;
+import me.arthed.smartgambling.games.poker.Poker;
 import me.arthed.smartgambling.games.common.machine.Machine;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -134,6 +136,15 @@ public final class DataManager {
 
                         MachineData machineData = machineType instanceof BlackJack
                                 ? new MachineDataBlackjack(
+                                        machineId,
+                                        machineType,
+                                        blocks,
+                                        resolution.entities(),
+                                        direction,
+                                        false
+                                )
+                                : machineType instanceof Poker
+                                ? new MachineDataPoker(
                                         machineId,
                                         machineType,
                                         blocks,
@@ -309,6 +320,15 @@ public final class DataManager {
 
                     MachineData machineData = machineType instanceof BlackJack
                             ? new MachineDataBlackjack(
+                                    machineId,
+                                    machineType,
+                                    blocks,
+                                    resolution.entities(),
+                                    direction,
+                                    false
+                            )
+                            : machineType instanceof Poker
+                            ? new MachineDataPoker(
                                     machineId,
                                     machineType,
                                     blocks,

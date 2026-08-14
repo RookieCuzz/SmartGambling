@@ -8,6 +8,7 @@ public final class MachineTypeIds {
     public static final String BLACKJACK = "blackjack";
     public static final String CRASH = "crash";
     public static final String LOTTERY = "lottery";
+    public static final String POKER = "poker";
 
     private MachineTypeIds() {
     }
@@ -42,6 +43,7 @@ public final class MachineTypeIds {
             case BLACKJACK -> "二十一点";
             case CRASH -> "Crash 爆点";
             case LOTTERY -> "累积奖池";
+            case POKER -> "德州扑克";
             case "slotmachine", "slotexample" -> "老虎机";
             default -> id;
         };

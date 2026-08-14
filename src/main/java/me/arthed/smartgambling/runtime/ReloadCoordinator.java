@@ -14,6 +14,7 @@ import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
 import me.arthed.smartgambling.games.slots.SlotMachine;
+import me.arthed.smartgambling.games.poker.Poker;
 import me.arthed.smartgambling.utils.MachineTypeIds;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -55,6 +56,8 @@ public final class ReloadCoordinator {
                 }
             } else if (oldType instanceof BlackJack) {
                 replacement = candidate.blackJack();
+            } else if (oldType instanceof Poker) {
+                replacement = candidate.poker();
             } else if (oldType instanceof JackpotMachine) {
                 replacement = candidate.jackpotMachine();
             } else if (oldType instanceof CrashMachine) {

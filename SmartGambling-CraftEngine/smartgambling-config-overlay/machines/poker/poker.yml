@@ -1,0 +1,109 @@
+Rules:
+  smallBlind: 10
+  bigBlind: 20
+  actionTimeoutSeconds: 30
+  resultDisplayTicks: 100
+
+Table:
+  craftEngineItem: smartgambling:blackjack_table
+  name: '&6德州扑克桌'
+  amount: 1
+  Offset: {x: 0, y: 0, z: 0}
+  ChairOffset1: {x: 0, y: -1, z: 1.5}
+  ChairOffset2: {x: 0, y: -1, z: -1.5}
+
+CardBack:
+  craftEngineItem: smartgambling:blackjack_card_back
+  name: '&f牌背'
+  amount: 1
+
+GUI:
+  size: 45
+  title: '<shift:-8><image:smartgambling:blackjack_ui><shift:-200>'
+  opponentCardSlots: [3, 5]
+  communityCardSlots: [11, 12, 13, 14, 15]
+  ownCardSlots: [29, 31]
+  foldButton: [36]
+  checkCallButton: [37, 38]
+  minimumRaiseButton: [39, 40]
+  potRaiseButton: [41, 42]
+  allInButton: [43, 44]
+  Items:
+    fold:
+      slots: [36]
+      craftEngineItem: smartgambling:gui_transparent
+      name: '&c弃牌'
+    check_call:
+      slots: [37, 38]
+      craftEngineItem: smartgambling:gui_transparent
+      name: '&a过牌 / 跟注'
+    minimum_raise:
+      slots: [39, 40]
+      craftEngineItem: smartgambling:gui_transparent
+      name: '&e最小加注'
+    pot_raise:
+      slots: [41, 42]
+      craftEngineItem: smartgambling:gui_transparent
+      name: '&6底池加注'
+    all_in:
+      slots: [43, 44]
+      craftEngineItem: smartgambling:gui_transparent
+      name: '&4全下'
+
+Cards:
+  HEARTS:
+    ACE: {craftEngineItem: smartgambling:blackjack_red_ace, name: '&cA♥', amount: 1}
+    TWO: {craftEngineItem: smartgambling:blackjack_red_2, name: '&c2♥', amount: 1}
+    THREE: {craftEngineItem: smartgambling:blackjack_red_3, name: '&c3♥', amount: 1}
+    FOUR: {craftEngineItem: smartgambling:blackjack_red_4, name: '&c4♥', amount: 1}
+    FIVE: {craftEngineItem: smartgambling:blackjack_red_5, name: '&c5♥', amount: 1}
+    SIX: {craftEngineItem: smartgambling:blackjack_red_6, name: '&c6♥', amount: 1}
+    SEVEN: {craftEngineItem: smartgambling:blackjack_red_7, name: '&c7♥', amount: 1}
+    EIGHT: {craftEngineItem: smartgambling:blackjack_red_8, name: '&c8♥', amount: 1}
+    NINE: {craftEngineItem: smartgambling:blackjack_red_9, name: '&c9♥', amount: 1}
+    TEN: {craftEngineItem: smartgambling:blackjack_red_10, name: '&c10♥', amount: 1}
+    JACK: {craftEngineItem: smartgambling:blackjack_red_jack, name: '&cJ♥', amount: 1}
+    QUEEN: {craftEngineItem: smartgambling:blackjack_red_queen, name: '&cQ♥', amount: 1}
+    KING: {craftEngineItem: smartgambling:blackjack_red_king, name: '&cK♥', amount: 1}
+  DIAMONDS:
+    ACE: {craftEngineItem: smartgambling:poker_diamond_ace, name: '&cA♦', amount: 1}
+    TWO: {craftEngineItem: smartgambling:poker_diamond_2, name: '&c2♦', amount: 1}
+    THREE: {craftEngineItem: smartgambling:poker_diamond_3, name: '&c3♦', amount: 1}
+    FOUR: {craftEngineItem: smartgambling:poker_diamond_4, name: '&c4♦', amount: 1}
+    FIVE: {craftEngineItem: smartgambling:poker_diamond_5, name: '&c5♦', amount: 1}
+    SIX: {craftEngineItem: smartgambling:poker_diamond_6, name: '&c6♦', amount: 1}
+    SEVEN: {craftEngineItem: smartgambling:poker_diamond_7, name: '&c7♦', amount: 1}
+    EIGHT: {craftEngineItem: smartgambling:poker_diamond_8, name: '&c8♦', amount: 1}
+    NINE: {craftEngineItem: smartgambling:poker_diamond_9, name: '&c9♦', amount: 1}
+    TEN: {craftEngineItem: smartgambling:poker_diamond_10, name: '&c10♦', amount: 1}
+    JACK: {craftEngineItem: smartgambling:poker_diamond_jack, name: '&cJ♦', amount: 1}
+    QUEEN: {craftEngineItem: smartgambling:poker_diamond_queen, name: '&cQ♦', amount: 1}
+    KING: {craftEngineItem: smartgambling:poker_diamond_king, name: '&cK♦', amount: 1}
+  CLUBS:
+    ACE: {craftEngineItem: smartgambling:poker_club_ace, name: '&8A♣', amount: 1}
+    TWO: {craftEngineItem: smartgambling:poker_club_2, name: '&82♣', amount: 1}
+    THREE: {craftEngineItem: smartgambling:poker_club_3, name: '&83♣', amount: 1}
+    FOUR: {craftEngineItem: smartgambling:poker_club_4, name: '&84♣', amount: 1}
+    FIVE: {craftEngineItem: smartgambling:poker_club_5, name: '&85♣', amount: 1}
+    SIX: {craftEngineItem: smartgambling:poker_club_6, name: '&86♣', amount: 1}
+    SEVEN: {craftEngineItem: smartgambling:poker_club_7, name: '&87♣', amount: 1}
+    EIGHT: {craftEngineItem: smartgambling:poker_club_8, name: '&88♣', amount: 1}
+    NINE: {craftEngineItem: smartgambling:poker_club_9, name: '&89♣', amount: 1}
+    TEN: {craftEngineItem: smartgambling:poker_club_10, name: '&810♣', amount: 1}
+    JACK: {craftEngineItem: smartgambling:poker_club_jack, name: '&8J♣', amount: 1}
+    QUEEN: {craftEngineItem: smartgambling:poker_club_queen, name: '&8Q♣', amount: 1}
+    KING: {craftEngineItem: smartgambling:poker_club_king, name: '&8K♣', amount: 1}
+  SPADES:
+    ACE: {craftEngineItem: smartgambling:blackjack_black_ace, name: '&8A♠', amount: 1}
+    TWO: {craftEngineItem: smartgambling:blackjack_black_2, name: '&82♠', amount: 1}
+    THREE: {craftEngineItem: smartgambling:blackjack_black_3, name: '&83♠', amount: 1}
+    FOUR: {craftEngineItem: smartgambling:blackjack_black_4, name: '&84♠', amount: 1}
+    FIVE: {craftEngineItem: smartgambling:blackjack_black_5, name: '&85♠', amount: 1}
+    SIX: {craftEngineItem: smartgambling:blackjack_black_6, name: '&86♠', amount: 1}
+    SEVEN: {craftEngineItem: smartgambling:blackjack_black_7, name: '&87♠', amount: 1}
+    EIGHT: {craftEngineItem: smartgambling:blackjack_black_8, name: '&88♠', amount: 1}
+    NINE: {craftEngineItem: smartgambling:blackjack_black_9, name: '&89♠', amount: 1}
+    TEN: {craftEngineItem: smartgambling:blackjack_black_10, name: '&810♠', amount: 1}
+    JACK: {craftEngineItem: smartgambling:blackjack_black_jack, name: '&8J♠', amount: 1}
+    QUEEN: {craftEngineItem: smartgambling:blackjack_black_queen, name: '&8Q♠', amount: 1}
+    KING: {craftEngineItem: smartgambling:blackjack_black_king, name: '&8K♠', amount: 1}

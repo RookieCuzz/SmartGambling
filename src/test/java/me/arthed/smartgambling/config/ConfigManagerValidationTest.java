@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -109,6 +111,23 @@ class ConfigManagerValidationTest {
         assertPathFailure(
                 () -> ConfigManager.addPositiveWeight(Integer.MAX_VALUE, 1, "Items.seven.chance"),
                 "Items.seven.chance"
+        );
+    }
+
+    @Test
+    void pokerCardsAndActionsCannotShareInventorySlots() {
+        ConfigManager.requireDisjointSlots(Map.of(
+                "GUI.ownCardSlots", List.of(3, 5),
+                "GUI.foldButton", List.of(36),
+                "GUI.allInButton", List.of(43, 44)
+        ));
+
+        Map<String, List<Integer>> overlapping = new LinkedHashMap<>();
+        overlapping.put("GUI.ownCardSlots", List.of(3, 5));
+        overlapping.put("GUI.communityCardSlots", List.of(5, 11, 12));
+        assertPathFailure(
+                () -> ConfigManager.requireDisjointSlots(overlapping),
+                "GUI.communityCardSlots"
         );
     }
 

@@ -21,6 +21,7 @@ import me.arthed.smartgambling.economy.WagerResolution;
 import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
 import me.arthed.smartgambling.games.common.machine.Machine;
+import me.arthed.smartgambling.games.common.machine.ConfirmableWagerMachine;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.utils.DisplayUtils;
 import org.bukkit.Bukkit;
@@ -35,7 +36,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 
-public class BlackJack implements Machine {
+public class BlackJack implements Machine, ConfirmableWagerMachine {
     private static final int MAX_SETTLEMENT_RETRY_ATTEMPTS = 12;
     private static final long SETTLEMENT_RETRY_DELAY_TICKS = 100L;
     public final ItemStack machineItem;
@@ -106,6 +107,20 @@ public class BlackJack implements Machine {
         this.placeholderSlots = placeholderSlots;
         this.cards = cards;
         this.cardsTotalChance = cardsTotalChance;
+    }
+
+    @Override
+    public boolean canConfirmChallenger(Player player, MachineData machineData) {
+        return machineData instanceof MachineDataBlackjack blackjack
+                && blackjack.canCommitChallenger(player);
+    }
+
+    @Override
+    public int requiredStake(MachineData machineData) {
+        if (!(machineData instanceof MachineDataBlackjack blackjack)) {
+            throw new IllegalArgumentException("Blackjack confirmation requires a blackjack table");
+        }
+        return blackjack.bet;
     }
 
     @Override

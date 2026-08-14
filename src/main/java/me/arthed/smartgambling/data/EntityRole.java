@@ -5,18 +5,24 @@ import me.arthed.smartgambling.games.blackjack.BlackJack;
 import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
+import me.arthed.smartgambling.games.poker.Poker;
 
 /** Stable, persisted identities for the ArmorStands owned by one machine. */
 public enum EntityRole {
     MODEL,
     PRIMARY_SEAT,
     BLACKJACK_HOST_SEAT,
-    BLACKJACK_CHALLENGER_SEAT;
+    BLACKJACK_CHALLENGER_SEAT,
+    POKER_HOST_SEAT,
+    POKER_CHALLENGER_SEAT;
 
     public static List<EntityRole> forMachine(Machine machine) {
         if (machine instanceof BlackJack) {
             // Keep this order compatible with the v2 entity array.
             return List.of(BLACKJACK_HOST_SEAT, BLACKJACK_CHALLENGER_SEAT, MODEL);
+        }
+        if (machine instanceof Poker) {
+            return List.of(POKER_HOST_SEAT, POKER_CHALLENGER_SEAT, MODEL);
         }
         if (machine instanceof JackpotMachine || machine instanceof CrashMachine) {
             return List.of(MODEL);

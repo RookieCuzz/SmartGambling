@@ -117,6 +117,86 @@ items:
     material: stick
     model: smartgambling:item/casino/carddeck
 
+  # Diamond and club suits complete the 52-card Texas Hold'em deck.
+  smartgambling:poker_diamond_ace:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_ace
+  smartgambling:poker_diamond_2:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_2
+  smartgambling:poker_diamond_3:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_3
+  smartgambling:poker_diamond_4:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_4
+  smartgambling:poker_diamond_5:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_5
+  smartgambling:poker_diamond_6:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_6
+  smartgambling:poker_diamond_7:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_7
+  smartgambling:poker_diamond_8:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_8
+  smartgambling:poker_diamond_9:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_9
+  smartgambling:poker_diamond_10:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_10
+  smartgambling:poker_diamond_jack:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_jack
+  smartgambling:poker_diamond_queen:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_queen
+  smartgambling:poker_diamond_king:
+    material: stick
+    model: smartgambling:item/casino/poker_diamond_king
+  smartgambling:poker_club_ace:
+    material: stick
+    model: smartgambling:item/casino/poker_club_ace
+  smartgambling:poker_club_2:
+    material: stick
+    model: smartgambling:item/casino/poker_club_2
+  smartgambling:poker_club_3:
+    material: stick
+    model: smartgambling:item/casino/poker_club_3
+  smartgambling:poker_club_4:
+    material: stick
+    model: smartgambling:item/casino/poker_club_4
+  smartgambling:poker_club_5:
+    material: stick
+    model: smartgambling:item/casino/poker_club_5
+  smartgambling:poker_club_6:
+    material: stick
+    model: smartgambling:item/casino/poker_club_6
+  smartgambling:poker_club_7:
+    material: stick
+    model: smartgambling:item/casino/poker_club_7
+  smartgambling:poker_club_8:
+    material: stick
+    model: smartgambling:item/casino/poker_club_8
+  smartgambling:poker_club_9:
+    material: stick
+    model: smartgambling:item/casino/poker_club_9
+  smartgambling:poker_club_10:
+    material: stick
+    model: smartgambling:item/casino/poker_club_10
+  smartgambling:poker_club_jack:
+    material: stick
+    model: smartgambling:item/casino/poker_club_jack
+  smartgambling:poker_club_queen:
+    material: stick
+    model: smartgambling:item/casino/poker_club_queen
+  smartgambling:poker_club_king:
+    material: stick
+    model: smartgambling:item/casino/poker_club_king
+
   # Eight complete slot reel items.
   smartgambling:slot_cherries:
     material: stick

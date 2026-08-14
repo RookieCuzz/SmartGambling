@@ -6,6 +6,8 @@ import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
 import me.arthed.smartgambling.games.blackjack.OpenBlackjack;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.games.common.machine.OpenMachine;
+import me.arthed.smartgambling.games.poker.MachineDataPoker;
+import me.arthed.smartgambling.games.poker.OpenPoker;
 import me.arthed.smartgambling.utils.DisplayUtils;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -46,6 +48,8 @@ public class EntityListener implements Listener {
                 OpenMachine openMachine;
                 if (machineData instanceof MachineDataBlackjack) {
                     openMachine = new OpenBlackjack(machineData.machineType, machineData);
+                } else if (machineData instanceof MachineDataPoker) {
+                    openMachine = new OpenPoker(machineData.machineType, machineData);
                 } else {
                     if (machineData.inUse) {
                         DisplayUtils.displayActionBar(event.getPlayer(), (String)this.smartGambling.configManager.messages.get("machineAlreadyInUse"));

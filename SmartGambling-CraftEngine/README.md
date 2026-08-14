@@ -9,9 +9,10 @@
 最初只检查 ItemsAdder 数据时，21 点、Crash 和 Jackpot 素材被列为缺失。
 后续根据用户提供的原始服务器归档及其中的 `server.properties`，定位并校验了
 服务器实际下发的资源包。原包中的 42 个赌场模型 JSON、60 张赌场 PNG 以及
-货币图标已经迁入 `smartgambling` 命名空间。现在包含：
+货币图标已经迁入 `smartgambling` 命名空间；德州扑克另补充了 26 张与
+既有牌面同尺寸、同布局的方块/梅花牌。现在包含：
 
-- 26 张红/黑牌面、牌背和完整牌堆模型；
+- 52 张红桃/方块/梅花/黑桃牌面、牌背和完整牌堆模型；
 - 21 点桌、赌场椅、老虎机、Crash 机器、Jackpot 机器；
 - 8 个老虎机符号和奖励菜单别名；
 - 投注、确认、21 点、Crash 三状态、Jackpot 两状态和老虎机 GUI；
@@ -78,6 +79,18 @@ Cards:
     craftEngineItems:
       - smartgambling:blackjack_red_ace
       - smartgambling:blackjack_black_ace
+```
+
+德州扑克按四种花色显式配置，例如：
+
+```yaml
+Cards:
+  DIAMONDS:
+    ACE:
+      craftEngineItem: smartgambling:poker_diamond_ace
+  CLUBS:
+    ACE:
+      craftEngineItem: smartgambling:poker_club_ace
 ```
 
 不要把原包的 STICK/CMD 501–542 写回新配置。那些编号只用于定位原始素材；

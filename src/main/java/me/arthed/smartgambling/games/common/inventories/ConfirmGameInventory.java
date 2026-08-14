@@ -4,9 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import me.arthed.smartgambling.SmartGambling;
-import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
 import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
+import me.arthed.smartgambling.games.common.machine.ConfirmableWagerMachine;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.games.common.machine.OpenMachine;
 import me.arthed.smartgambling.utils.DisplayUtils;
@@ -40,10 +40,11 @@ public class ConfirmGameInventory extends SubInventory {
     @Override
     public void open(Player player, OpenInterface openInterface) {
         if (!(openInterface instanceof OpenMachine openMachine)
-                || !(openMachine.machineData instanceof MachineDataBlackjack machineData)
-                || !machineData.canCommitChallenger(player)) {
+                || !(openMachine.machineType instanceof ConfirmableWagerMachine table)
+                || !table.canConfirmChallenger(player, openMachine.machineData)) {
             return;
         }
+        int requiredStake = table.requiredStake(openMachine.machineData);
 
         Inventory playerInventory = Bukkit.createInventory(
                 (InventoryHolder) player,
@@ -59,7 +60,7 @@ public class ConfirmGameInventory extends SubInventory {
             }
             ItemMeta meta = button.getItemMeta();
             if (meta.hasDisplayName()) {
-                meta.setDisplayName(meta.getDisplayName().replace("%bet%", Integer.toString(machineData.bet)));
+                meta.setDisplayName(meta.getDisplayName().replace("%bet%", Integer.toString(requiredStake)));
                 button.setItemMeta(meta);
             }
         }
@@ -88,20 +89,24 @@ public class ConfirmGameInventory extends SubInventory {
         }
         OpenInterface old = this.oldInterfaces.get(player);
         if (!(old instanceof OpenMachine openMachine)
-                || !(openMachine.machineData instanceof MachineDataBlackjack machineData)) {
+                || !(openMachine.machineType instanceof ConfirmableWagerMachine table)) {
             return;
         }
 
         if (event.getSlot() == this.confirmButton) {
             int tableBet;
-            synchronized (machineData) {
-                if (!machineData.canCommitChallenger(player)
-                        || !EconomyTransactions.isValidAmount(machineData.bet)) {
+            synchronized (openMachine.machineData) {
+                if (!table.canConfirmChallenger(player, openMachine.machineData)) {
                     openMachine.betAmount = -1;
                     this.close(player, event.getInventory());
                     return;
                 }
-                tableBet = machineData.bet;
+                tableBet = table.requiredStake(openMachine.machineData);
+                if (!EconomyTransactions.isValidAmount(tableBet)) {
+                    openMachine.betAmount = -1;
+                    this.close(player, event.getInventory());
+                    return;
+                }
             }
 
             double balance = SmartGambling.getEconomy().getBalance(player);
@@ -118,7 +123,7 @@ public class ConfirmGameInventory extends SubInventory {
                 return;
             }
 
-            // BlackJack.open performs the actual checked withdrawal. Keeping
+            // The table performs the actual checked withdrawal. Keeping
             // the transaction there makes reservation -> withdrawal -> commit
             // one atomic state transition.
             openMachine.betAmount = tableBet;

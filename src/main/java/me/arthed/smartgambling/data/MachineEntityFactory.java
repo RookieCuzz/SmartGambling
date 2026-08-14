@@ -260,7 +260,8 @@ public final class MachineEntityFactory {
             return modelYaw(direction);
         }
         float yaw = seatYaw(direction);
-        if (role == EntityRole.BLACKJACK_CHALLENGER_SEAT) {
+        if (role == EntityRole.BLACKJACK_CHALLENGER_SEAT
+                || role == EntityRole.POKER_CHALLENGER_SEAT) {
             yaw += 180.0F;
             if (yaw >= 180.0F) {
                 yaw -= 360.0F;

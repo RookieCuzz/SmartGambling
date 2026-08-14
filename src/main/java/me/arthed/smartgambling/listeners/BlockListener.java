@@ -7,6 +7,8 @@ import me.arthed.smartgambling.games.blackjack.OpenBlackjack;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.games.common.machine.OpenMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
+import me.arthed.smartgambling.games.poker.MachineDataPoker;
+import me.arthed.smartgambling.games.poker.OpenPoker;
 import me.arthed.smartgambling.utils.DisplayUtils;
 import java.util.Arrays;
 import org.bukkit.Bukkit;
@@ -46,6 +48,8 @@ public class BlockListener implements Listener {
                                     OpenInterface openMachine;
                                     if (machineData instanceof MachineDataBlackjack) {
                                         openMachine = new OpenBlackjack(machineData.machineType, machineData);
+                                    } else if (machineData instanceof MachineDataPoker) {
+                                        openMachine = new OpenPoker(machineData.machineType, machineData);
                                     } else if (machineData.machineType instanceof JackpotMachine) {
                                         openMachine = new OpenInterface(SmartGambling.getInstance().jackpotMachine);
                                     } else {
@@ -71,7 +75,9 @@ public class BlockListener implements Listener {
                                                 || this.smartGambling.inputMoneyRoutine.playersInRoutine.contains(event.getPlayer())) {
                                             return;
                                         }
-                                        if (!(machineData instanceof MachineDataBlackjack) && machineData.inUse) {
+                                        if (!(machineData instanceof MachineDataBlackjack)
+                                                && !(machineData instanceof MachineDataPoker)
+                                                && machineData.inUse) {
                                             DisplayUtils.displayActionBar(
                                                     event.getPlayer(),
                                                     this.smartGambling.configManager.messages.get("machineAlreadyInUse")

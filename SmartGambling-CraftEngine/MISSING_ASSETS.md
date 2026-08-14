@@ -20,5 +20,9 @@ Jackpot 和完整赌场 GUI。`Smart Survival Server.zip` 的
 STICK/3 的透明点击层；可见按钮已经画在 256x256 GUI 背景上，因此它保持
 透明是正确行为。
 
+新增德州扑克后，红桃/黑桃继续使用上述红/黑牌面；原包未提供的 26 张
+方块/梅花已按同一 32×32 像素布局补齐。它们属于新增派生素材，不冒充为
+原资源包内容，生成参考与转换说明见 `SOURCE_MAP.md`。
+
 旧 ItemsAdder 的 `lucky-gem`、`empty-slot` 和 `forge` 外观只是编号碰撞，
 不是赌博素材，仍然不会迁入正式 CE 映射。

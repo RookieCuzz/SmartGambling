@@ -30,6 +30,7 @@ Java 21、CraftEngine 26.7.4。
 - 所有 `customModelData` 改为 `craftEngineItem`；
 - 所有牌组 `customModelDataList` 改为 `craftEngineItems`；
 - 21 点完整红/黑牌、牌背、牌桌已接入真实素材；
+- 新增 `machines/poker/poker.yml`，复用二十一点桌面并接入完整四花色牌组；
 - Crash、Jackpot 和赌场椅已接入真实三维模型；
 - 9 个游戏 GUI 状态全部使用 CE 图像标签；
 - 货币字符恢复为原包 U+E307；

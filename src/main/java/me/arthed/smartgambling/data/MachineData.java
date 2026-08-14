@@ -9,6 +9,7 @@ import me.arthed.smartgambling.SmartGambling;
 import me.arthed.smartgambling.games.blackjack.BlackJack;
 import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.crash.CrashMachine;
+import me.arthed.smartgambling.games.poker.Poker;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -347,6 +348,12 @@ public class MachineData {
             case BLACKJACK_CHALLENGER_SEAT -> blackjackSeatLocation(
                     machineType, origin, direction, false
             );
+            case POKER_HOST_SEAT -> pokerSeatLocation(
+                    machineType, origin, direction, true
+            );
+            case POKER_CHALLENGER_SEAT -> pokerSeatLocation(
+                    machineType, origin, direction, false
+            );
         };
     }
 
@@ -419,7 +426,8 @@ public class MachineData {
                     role,
                     entityTransactionId
             );
-            case BLACKJACK_HOST_SEAT, BLACKJACK_CHALLENGER_SEAT -> MachineEntityFactory.spawnTaggedSeat(
+            case BLACKJACK_HOST_SEAT, BLACKJACK_CHALLENGER_SEAT,
+                    POKER_HOST_SEAT, POKER_CHALLENGER_SEAT -> MachineEntityFactory.spawnTaggedSeat(
                     expectedLocation(role),
                     direction,
                     SmartGambling.getInstance().chairItem,
@@ -446,6 +454,21 @@ public class MachineData {
             throw new IllegalStateException("Blackjack seat requested for a non-blackjack machine");
         }
         double[] configured = host ? blackJack.chair1Offset : blackJack.chair2Offset;
+        double[] offset = orientedBlackjackOffset(configured, direction);
+        return origin.getLocation().add(0.5D, 0.0D, 0.5D)
+                .add(offset[0], offset[1], offset[2]);
+    }
+
+    private static Location pokerSeatLocation(
+            Machine machineType,
+            Block origin,
+            BlockFace direction,
+            boolean host
+    ) {
+        if (!(machineType instanceof Poker poker)) {
+            throw new IllegalStateException("Poker seat requested for a non-poker machine");
+        }
+        double[] configured = host ? poker.chair1Offset : poker.chair2Offset;
         double[] offset = orientedBlackjackOffset(configured, direction);
         return origin.getLocation().add(0.5D, 0.0D, 0.5D)
                 .add(offset[0], offset[1], offset[2]);

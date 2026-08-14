@@ -33,4 +33,16 @@ class MachinePlacementGeometryTest {
             assertEquals(180.0F, difference == 180.0F ? difference : 360.0F - difference, 0.001F);
         }
     }
+
+    @Test
+    void pokerSeatsAlwaysFaceOppositeDirections() {
+        for (BlockFace direction : new BlockFace[]{
+                BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST}) {
+            float host = MachineEntityFactory.yawForRole(direction, EntityRole.POKER_HOST_SEAT);
+            float challenger = MachineEntityFactory.yawForRole(
+                    direction, EntityRole.POKER_CHALLENGER_SEAT);
+            float difference = Math.abs(host - challenger);
+            assertEquals(180.0F, difference == 180.0F ? difference : 360.0F - difference, 0.001F);
+        }
+    }
 }

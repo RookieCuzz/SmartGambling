@@ -37,6 +37,7 @@ import me.arthed.smartgambling.games.jackpot.JackpotMachine;
 import me.arthed.smartgambling.games.slots.PlaybackManager;
 import me.arthed.smartgambling.games.slots.SlotMachine;
 import me.arthed.smartgambling.games.slots.testing.ForcedSlotResultRegistry;
+import me.arthed.smartgambling.games.poker.Poker;
 import me.arthed.smartgambling.handlers.PlaceholderSnapshot;
 import me.arthed.smartgambling.handlers.WorldGuardImplementation;
 import me.arthed.smartgambling.integrations.OptionalIntegration;
@@ -87,6 +88,7 @@ public final class SmartGambling
     public JackpotMachine jackpotMachine;
     public CrashMachine crashMachine;
     public BlackJack blackJack;
+    public Poker poker;
     public SelectBlocksRoutine selectBlocksRoutine;
     public InputMoneyRoutine inputMoneyRoutine;
     public WorldGuardImplementation worldGuard;
@@ -223,6 +225,9 @@ public final class SmartGambling
         }
         if (machineType instanceof BlackJack) {
             return MachineTypeIds.BLACKJACK;
+        }
+        if (machineType instanceof Poker) {
+            return MachineTypeIds.POKER;
         }
         if (machineType instanceof CrashMachine) {
             return MachineTypeIds.CRASH;
@@ -433,6 +438,9 @@ public final class SmartGambling
         this.clearForcedSlotResults("gameplay shutdown or successful reload");
         if (this.blackJack != null) {
             this.runShutdownStep("blackjack", this.blackJack::shutdownAndRefund);
+        }
+        if (this.poker != null) {
+            this.runShutdownStep("poker", this.poker::shutdownAndRefund);
         }
         if (this.jackpotMachine != null) {
             this.runShutdownStep("jackpot", this.jackpotMachine::shutdownAndRefund);

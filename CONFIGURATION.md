@@ -168,6 +168,22 @@ smartgambling:slot_ui
 
 两把椅子会按牌桌朝向旋转，并自动保持面对面。
 
+### `machines/poker/poker.yml`
+
+- `Rules.smallBlind` / `bigBlind`：大小盲，且大盲必须高于小盲；
+- `Rules.actionTimeoutSeconds`：单次操作限时，超时无待跟注时自动过牌，否则弃牌；
+- `Rules.resultDisplayTicks`：摊牌或弃牌结算结果保留时间；
+- `Cards`：必须完整配置红桃、方块、梅花、黑桃各 13 张，不能缺牌或重复；
+- `GUI.ownCardSlots` / `opponentCardSlots`：双方两张底牌；
+- `GUI.communityCardSlots`：翻牌、转牌、河牌共五张公共牌；
+- 五组操作按钮依次为弃牌、过牌/跟注、最小加注、底池加注与全下。
+
+玩法为单手双人 Heads-Up。桌主选择买入并支付小盲，对手确认同额买入并支付
+大盲；买入至少覆盖大盲。双方完整买入由账本托管，牌桌筹码只在本手内计算，
+最终按剩余筹码和底池份额原子返还。技术中断退款，主动离桌按弃牌处理。
+默认 GUI 和牌桌沿用二十一点材质；红桃/黑桃复用既有牌面，方块/梅花使用
+新增的同风格完整牌组。
+
 ### `machines/crash/crash.yml`
 
 - `gameDuration`：下注倒计时；

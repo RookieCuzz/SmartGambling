@@ -44,6 +44,15 @@ JSON 内的 `item/casino/...` 纹理引用改为
 `custom_model_data`，CraftEngine 会自动分配模型编号；SmartGambling 只按
 `smartgambling:*` ID 构建物品。
 
+## 德州扑克新增牌色
+
+原包只提供红/黑两套二十一点牌面，没有独立方块与梅花。德州扑克新增的
+`poker_diamond_*` 和 `poker_club_*` 共 26 张 32×32 PNG，以原红/黑牌面的
+边框、角标和透明区域为基础，仅将中央花色分别改为红色方块与黑色梅花；
+对应模型 JSON 与 CraftEngine 稳定 ID 为本次新增。用于确定花色轮廓和像素
+风格的生成参考保存在 `design-references/poker-suits-reference.png`，不会被
+打入客户端资源包。
+
 早期从 ItemsAdder 导入的兼容图标和透明 PNG 仍作为未接线源文件保留，但
 正式赌场物品、模型和 GUI 已全部切换到经哈希验证的原始服务器材质包。
 

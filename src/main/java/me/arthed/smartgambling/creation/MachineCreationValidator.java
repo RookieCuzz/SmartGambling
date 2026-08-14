@@ -12,6 +12,7 @@ import me.arthed.smartgambling.data.EntityRole;
 import me.arthed.smartgambling.data.MachineData;
 import me.arthed.smartgambling.games.blackjack.BlackJack;
 import me.arthed.smartgambling.games.common.machine.Machine;
+import me.arthed.smartgambling.games.poker.Poker;
 import net.momirealms.craftengine.bukkit.api.CraftEngineItems;
 import net.momirealms.craftengine.core.plugin.CraftEngine;
 import org.bukkit.Location;
@@ -191,6 +192,10 @@ public final class MachineCreationValidator {
         if (machineType instanceof BlackJack blackJack
                 && (!allFinite(blackJack.chair1Offset) || !allFinite(blackJack.chair2Offset))) {
             return invalid("二十一点椅子偏移包含无效数值。");
+        }
+        if (machineType instanceof Poker poker
+                && (!allFinite(poker.chair1Offset) || !allFinite(poker.chair2Offset))) {
+            return invalid("德州扑克椅子偏移包含无效数值。");
         }
 
         List<Location> expectedLocations = new ArrayList<>(roles.size());
@@ -398,6 +403,8 @@ public final class MachineCreationValidator {
             case PRIMARY_SEAT -> "主座椅";
             case BLACKJACK_HOST_SEAT -> "庄家座椅";
             case BLACKJACK_CHALLENGER_SEAT -> "挑战者座椅";
+            case POKER_HOST_SEAT -> "德州庄家座椅";
+            case POKER_CHALLENGER_SEAT -> "德州挑战者座椅";
         };
     }
 

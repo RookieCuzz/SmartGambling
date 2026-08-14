@@ -23,6 +23,8 @@ import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
 import me.arthed.smartgambling.games.slots.SlotMachine;
 import me.arthed.smartgambling.games.slots.testing.ForcedSlotResultRegistry;
+import me.arthed.smartgambling.games.poker.MachineDataPoker;
+import me.arthed.smartgambling.games.poker.Poker;
 import me.arthed.smartgambling.runtime.PreparedRuntime;
 import me.arthed.smartgambling.runtime.ReloadCoordinator;
 import me.arthed.smartgambling.utils.DisplayUtils;
@@ -682,6 +684,8 @@ public class MainCommand
         try {
             MachineData machineData = machineType instanceof BlackJack
                     ? new MachineDataBlackjack(UUID.randomUUID(), machineType, blockArray, null, session.direction())
+                    : machineType instanceof Poker
+                    ? new MachineDataPoker(UUID.randomUUID(), machineType, blockArray, null, session.direction())
                     : new MachineData(UUID.randomUUID(), machineType, blockArray, null, session.direction());
             if (!DataManager.addMachine(origin.getChunk(), machineData)) {
                 return null;

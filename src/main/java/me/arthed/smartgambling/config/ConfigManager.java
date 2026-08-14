@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import me.arthed.smartgambling.SmartGambling;
 import me.arthed.smartgambling.games.blackjack.BlackJack;
@@ -28,6 +29,8 @@ import me.arthed.smartgambling.games.common.sound.CustomSound;
 import me.arthed.smartgambling.games.common.sound.SoundElement;
 import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
+import me.arthed.smartgambling.games.poker.Poker;
+import me.arthed.smartgambling.games.poker.PokerCard;
 import me.arthed.smartgambling.games.slots.SlotMachine;
 import me.arthed.smartgambling.games.slots.objects.SlotItem;
 import me.arthed.smartgambling.games.slots.objects.rewards.ExactMatchReward;
@@ -283,6 +286,19 @@ public class ConfigManager {
         }
     }
 
+    static void requireDisjointSlots(Map<String, List<Integer>> groups) {
+        Map<Integer, String> owners = new HashMap<>();
+        for (Map.Entry<String, List<Integer>> entry : groups.entrySet()) {
+            String path = Objects.requireNonNull(entry.getKey(), "slot group path");
+            for (int slot : Objects.requireNonNull(entry.getValue(), path)) {
+                String previous = owners.putIfAbsent(slot, path);
+                if (previous != null) {
+                    throw validation(path, "slot " + slot + " overlaps " + previous);
+                }
+            }
+        }
+    }
+
     private static IllegalArgumentException validation(String path, String message) {
         return new IllegalArgumentException("Invalid configuration at '" + path + "': " + message);
     }
@@ -377,6 +393,7 @@ public class ConfigManager {
         this.loadJackpotMachine();
         this.loadCrashMachine();
         this.loadBlackJack();
+        this.loadPoker();
         this.loadPlaceholdersConfig();
     }
 
@@ -544,6 +561,127 @@ public class ConfigManager {
                 MachineTypeIds.BLACKJACK,
                 SmartGambling.getInstance().blackJack
         );
+    }
+
+    public void loadPoker() {
+        File pokerFile = new File(SmartGambling.getInstance().getDataFolder() + "/machines/poker/poker.yml");
+        if (!pokerFile.exists()) {
+            SmartGambling.getInstance().saveResource("machines/poker/poker.yml", false);
+        }
+
+        FileConfiguration config = new YamlConfiguration();
+        try {
+            config.load(pokerFile);
+        } catch (InvalidConfigurationException | IOException exception) {
+            throw new IllegalStateException("Could not load machines/poker/poker.yml", exception);
+        }
+
+        int guiSize = requireInventorySize(config, "GUI.size");
+        Inventory baseInventory = Bukkit.createInventory((InventoryHolder) null, guiSize);
+        String title = ChatColor.translateAlternateColorCodes(
+                '&', Objects.requireNonNull(config.getString("GUI.title"), "GUI.title"));
+        List<Integer> ownCards = requireSlots(config, "GUI.ownCardSlots", guiSize, true);
+        List<Integer> opponentCards = requireSlots(config, "GUI.opponentCardSlots", guiSize, true);
+        List<Integer> communityCards = requireSlots(config, "GUI.communityCardSlots", guiSize, true);
+        if (ownCards.size() != 2 || opponentCards.size() != 2 || communityCards.size() != 5) {
+            throw validation("GUI", "poker requires 2 own, 2 opponent and 5 community card slots");
+        }
+        List<Integer> foldSlots = requireSlots(config, "GUI.foldButton", guiSize, true);
+        List<Integer> checkCallSlots = requireSlots(config, "GUI.checkCallButton", guiSize, true);
+        List<Integer> minimumRaiseSlots = requireSlots(config, "GUI.minimumRaiseButton", guiSize, true);
+        List<Integer> potRaiseSlots = requireSlots(config, "GUI.potRaiseButton", guiSize, true);
+        List<Integer> allInSlots = requireSlots(config, "GUI.allInButton", guiSize, true);
+        Map<String, List<Integer>> pokerSlots = new LinkedHashMap<>();
+        pokerSlots.put("GUI.ownCardSlots", ownCards);
+        pokerSlots.put("GUI.opponentCardSlots", opponentCards);
+        pokerSlots.put("GUI.communityCardSlots", communityCards);
+        pokerSlots.put("GUI.foldButton", foldSlots);
+        pokerSlots.put("GUI.checkCallButton", checkCallSlots);
+        pokerSlots.put("GUI.minimumRaiseButton", minimumRaiseSlots);
+        pokerSlots.put("GUI.potRaiseButton", potRaiseSlots);
+        pokerSlots.put("GUI.allInButton", allInSlots);
+        requireDisjointSlots(pokerSlots);
+        Button fold = new Button(new HashSet<>(foldSlots));
+        Button checkCall = new Button(new HashSet<>(checkCallSlots));
+        Button minimumRaise = new Button(new HashSet<>(minimumRaiseSlots));
+        Button potRaise = new Button(new HashSet<>(potRaiseSlots));
+        Button allIn = new Button(new HashSet<>(allInSlots));
+        List<ItemAnimation> animations = new ArrayList<>();
+        List<ItemAnimation> dependentAnimations = new ArrayList<>();
+        this.loadAllItems(config, baseInventory, animations, dependentAnimations, "GUI");
+        requirePopulatedSlots(baseInventory, List.copyOf(fold.getSlots()), "GUI.foldButton");
+        requirePopulatedSlots(baseInventory, List.copyOf(checkCall.getSlots()), "GUI.checkCallButton");
+        requirePopulatedSlots(baseInventory, List.copyOf(minimumRaise.getSlots()), "GUI.minimumRaiseButton");
+        requirePopulatedSlots(baseInventory, List.copyOf(potRaise.getSlots()), "GUI.potRaiseButton");
+        requirePopulatedSlots(baseInventory, List.copyOf(allIn.getSlots()), "GUI.allInButton");
+
+        List<PokerCard> deck = new ArrayList<>(52);
+        Set<String> identities = new HashSet<>();
+        ConfigurationSection cards = requireSection(config, "Cards");
+        for (String suitKey : cards.getKeys(false)) {
+            PokerCard.Suit suit;
+            try {
+                suit = PokerCard.Suit.parse(suitKey);
+            } catch (IllegalArgumentException exception) {
+                throw validation("Cards." + suitKey, "unknown poker suit", exception);
+            }
+            ConfigurationSection suitSection = requireSection(config, "Cards." + suitKey);
+            for (String rankKey : suitSection.getKeys(false)) {
+                PokerCard.Rank rank;
+                try {
+                    rank = PokerCard.Rank.parse(rankKey);
+                } catch (IllegalArgumentException exception) {
+                    throw validation("Cards." + suitKey + '.' + rankKey, "unknown poker rank", exception);
+                }
+                String identity = rank.name() + ':' + suit.name();
+                if (!identities.add(identity)) {
+                    throw validation("Cards." + suitKey + '.' + rankKey, "duplicates " + identity);
+                }
+                String path = "Cards." + suitKey + '.' + rankKey;
+                deck.add(new PokerCard(rank, suit, this.loadItem(config, path)));
+            }
+        }
+        if (deck.size() != 52 || identities.size() != 52) {
+            throw validation("Cards", "must configure every rank of all four suits exactly once (found "
+                    + deck.size() + ")");
+        }
+
+        ItemStack cardBack = this.loadItem(config, "CardBack");
+        ItemStack tableItem = this.loadItem(config, "Table");
+        double[] entityOffset = new double[]{config.getDouble("Table.Offset.x"), config.getDouble("Table.Offset.y"), config.getDouble("Table.Offset.z")};
+        double[] chair1Offset = new double[]{config.getDouble("Table.ChairOffset1.x"), config.getDouble("Table.ChairOffset1.y"), config.getDouble("Table.ChairOffset1.z")};
+        double[] chair2Offset = new double[]{config.getDouble("Table.ChairOffset2.x"), config.getDouble("Table.ChairOffset2.y"), config.getDouble("Table.ChairOffset2.z")};
+        int smallBlind = requirePositiveInt(config, "Rules.smallBlind");
+        int bigBlind = requirePositiveInt(config, "Rules.bigBlind");
+        if (bigBlind <= smallBlind) {
+            throw validation("Rules.bigBlind", "must be greater than Rules.smallBlind");
+        }
+        int actionTimeout = requirePositiveInt(config, "Rules.actionTimeoutSeconds");
+        int resultDisplayTicks = requirePositiveInt(config, "Rules.resultDisplayTicks");
+        SmartGambling.getInstance().poker = new Poker(
+                tableItem,
+                entityOffset,
+                chair1Offset,
+                chair2Offset,
+                baseInventory,
+                new InventoryAnimations(animations, dependentAnimations),
+                title,
+                fold,
+                checkCall,
+                minimumRaise,
+                potRaise,
+                allIn,
+                cardBack,
+                ownCards,
+                opponentCards,
+                communityCards,
+                deck,
+                smallBlind,
+                bigBlind,
+                actionTimeout,
+                resultDisplayTicks
+        );
+        SmartGambling.getInstance().registerMachineType(MachineTypeIds.POKER, SmartGambling.getInstance().poker);
     }
 
     public void loadCrashMachine() {

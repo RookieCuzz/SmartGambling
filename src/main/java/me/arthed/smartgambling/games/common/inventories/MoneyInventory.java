@@ -9,6 +9,7 @@ import me.arthed.smartgambling.games.common.inventories.SubInventory;
 import me.arthed.smartgambling.games.common.inventories.animation.InventoryAnimations;
 import me.arthed.smartgambling.games.common.inventories.objects.Button;
 import me.arthed.smartgambling.games.common.machine.OpenInterface;
+import me.arthed.smartgambling.games.common.machine.ConfirmableWagerMachine;
 import me.arthed.smartgambling.utils.DisplayUtils;
 import me.arthed.smartgambling.utils.EconomyTransactions;
 import net.milkbowl.vault.economy.Economy;
@@ -37,7 +38,7 @@ public class MoneyInventory
     public void open(Player player, OpenInterface openInterface) {
         UUID playerId = player.getUniqueId();
         if (openInterface.machineType == SmartGambling.getInstance().jackpotMachine
-                || openInterface.machineType == SmartGambling.getInstance().blackJack) {
+                || openInterface.machineType instanceof ConfirmableWagerMachine) {
             this.requireMoneyBefore.add(playerId);
         } else {
             this.requireMoneyBefore.remove(playerId);

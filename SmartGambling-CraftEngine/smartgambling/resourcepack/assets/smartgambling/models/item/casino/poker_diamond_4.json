@@ -1,0 +1,6 @@
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "smartgambling:item/casino/poker_diamond_4"
+    }
+}
