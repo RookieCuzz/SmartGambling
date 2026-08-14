@@ -29,6 +29,90 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'))
 }
 
+function forcedSlotConfigText(source, enabled) {
+  const hadBom = source.startsWith('\uFEFF')
+  const body = hadBom ? source.slice(1) : source
+  const eol = body.includes('\r\n') ? '\r\n' : '\n'
+  const lines = body.split(/\r?\n/)
+  const scalar = (name, value) => `    ${name}: ${value}`
+  const contentLine = (line) => line.trim() !== '' && !line.trimStart().startsWith('#')
+  const indentation = (line) => line.match(/^\s*/)[0].length
+
+  const testingIndex = lines.findIndex((line) => /^Testing:\s*(?:#.*)?$/.test(line))
+  if (testingIndex === -1) {
+    const block = [
+      'Testing:',
+      '  forcedSlotResults:',
+      scalar('enabled', enabled ? 'true' : 'false'),
+      scalar('expiresSeconds', '120'),
+      ''
+    ].join(eol)
+    return `${hadBom ? '\uFEFF' : ''}${block}${body}`
+  }
+
+  let testingEnd = lines.length
+  for (let index = testingIndex + 1; index < lines.length; index++) {
+    if (contentLine(lines[index]) && indentation(lines[index]) === 0) {
+      testingEnd = index
+      break
+    }
+  }
+  let forcedIndex = -1
+  for (let index = testingIndex + 1; index < testingEnd; index++) {
+    if (/^ {2}forcedSlotResults:\s*(?:#.*)?$/.test(lines[index])) {
+      forcedIndex = index
+      break
+    }
+  }
+  if (forcedIndex === -1) {
+    lines.splice(testingEnd, 0,
+      '  forcedSlotResults:',
+      scalar('enabled', enabled ? 'true' : 'false'),
+      scalar('expiresSeconds', '120'))
+    return `${hadBom ? '\uFEFF' : ''}${lines.join(eol)}`
+  }
+
+  let forcedEnd = testingEnd
+  for (let index = forcedIndex + 1; index < testingEnd; index++) {
+    if (contentLine(lines[index]) && indentation(lines[index]) <= 2) {
+      forcedEnd = index
+      break
+    }
+  }
+  const setScalar = (name, value) => {
+    const pattern = new RegExp(`^ {4}${name}:`)
+    for (let index = forcedIndex + 1; index < forcedEnd; index++) {
+      if (pattern.test(lines[index])) {
+        lines[index] = scalar(name, value)
+        return
+      }
+    }
+    lines.splice(forcedEnd, 0, scalar(name, value))
+    forcedEnd++
+  }
+  setScalar('enabled', enabled ? 'true' : 'false')
+  setScalar('expiresSeconds', '120')
+  return `${hadBom ? '\uFEFF' : ''}${lines.join(eol)}`
+}
+
+function isolateForcedSlotConfig(enabled) {
+  const file = path.join(SERVER_DIR, 'plugins', 'SmartGambling', 'config.yml')
+  if (!fs.existsSync(file)) return null
+  const original = fs.readFileSync(file)
+  const updated = forcedSlotConfigText(original.toString('utf8'), enabled)
+  fs.writeFileSync(file, updated, 'utf8')
+  process.stdout.write(`[config] forced slot test mode=${enabled}; original config will be restored after shutdown\n`)
+  let restored = false
+  return {
+    restore() {
+      if (restored) return
+      fs.writeFileSync(file, original)
+      restored = true
+      process.stdout.write('[config] restored original SmartGambling config bytes\n')
+    }
+  }
+}
+
 function ledgerSnapshot() {
   const file = path.join(SERVER_DIR, 'plugins', 'SmartGambling', 'economy-ledger.db')
   if (!fs.existsSync(file)) return { wagers: [], transactions: [] }
@@ -503,6 +587,101 @@ function assertCleanTerminalWagers(wagers, expectedCount) {
   return transactions
 }
 
+function reelItemModel(item) {
+  return item?.componentMap?.get('item_model')?.data ?? null
+}
+
+async function testForcedSlotResult(server, admin, player, machine) {
+  const symbols = ['Septar', 'Septar', 'Septar', 'Septar', 'Septar']
+  const testNoticePattern = /本局使用测试组合，结果不代表实际概率/
+  const consumedAuditPattern = /\[SLOT TEST\].*action=consumed.*machineType=slotmachine/i
+  const before = ledgerSnapshot()
+  const forceStart = admin.messages.length
+  admin.chat(`/sg slot test force ${player.name} SlotMachine ${symbols.join(' ')}`)
+  await admin.waitMessage(
+    new RegExp(`已为 ${player.name} 预设机器 slotmachine 的下一次成功下注`),
+    10_000,
+    forceStart
+  )
+
+  const queuedShowStart = admin.messages.length
+  admin.chat(`/sg slot test show ${player.name}`)
+  await admin.waitMessage(/slotmachine:\s+Septar Septar Septar Septar Septar/i, 10_000, queuedShowStart)
+
+  await openPhysical(server, player, machine.position, 54)
+  const noticeStart = player.messages.length
+  await player.click(49)
+  await player.waitMessage(testNoticePattern, 10_000, noticeStart)
+
+  const wagers = await waitUntil(() => {
+    const rows = newWagersSince(before, 'slot')
+    return rows.length === 1 && rows[0].state === 'CLOSED' ? rows : null
+  }, 20_000, 'forced slot durable settlement')
+  const transactions = assertCleanTerminalWagers(wagers, 1)
+  const wager = wagers[0]
+  const expectedPayout = Number(wager.stake) * 50
+  assert(wager.resolution_type === 'PAYOUT',
+    `five forced Septar symbols must resolve as PAYOUT: ${JSON.stringify(wager)}`)
+  assert(Number(wager.payout) === expectedPayout,
+    `five forced Septar symbols must pay 50x stake; expected ${expectedPayout}, got ${wager.payout}`)
+  const payoutTransactions = transactions.filter((row) => row.wager_id === wager.id
+    && row.purpose === 'PAYOUT' && row.state === 'APPLIED')
+  assert(payoutTransactions.length === 1 && Number(payoutTransactions[0].amount) === expectedPayout,
+    `forced slot payout transaction must apply ${expectedPayout} exactly once: ${JSON.stringify(payoutTransactions)}`)
+
+  await server.waitFor(
+    /\[SLOT TEST\].*action=applied.*machineType=slotmachine.*symbols=Septar,Septar,Septar,Septar,Septar/i,
+    10_000,
+    'forced slot application audit'
+  )
+
+  const window = player.bot.currentWindow
+  assert(window && window.inventoryStart === 54, 'forced slot GUI must remain open for final reel inspection')
+  const middleSlots = [21, 22, 23, 24, 25]
+  const middleItems = middleSlots.map((slot) => window.slots[slot])
+  assert(middleItems.every(Boolean), 'all five forced-result middle slots must contain an item')
+  const expectedModel = 'smartgambling:item/casino/seven'
+  const itemModels = middleItems.map(reelItemModel)
+  assert(itemModels.every((model) => model === expectedModel),
+    `all forced Septar middle slots must expose item_model=${expectedModel}: ${JSON.stringify(itemModels)}`)
+  player.record('forcedSlotMiddle', `slots=${middleSlots.join(',')} itemModels=${itemModels.join(',')}`)
+
+  const consumedShowStart = admin.messages.length
+  admin.chat(`/sg slot test show ${player.name}`)
+  await admin.waitMessage(
+    new RegExp(`${player.name} 当前没有待执行的老虎机测试结果`),
+    10_000,
+    consumedShowStart
+  )
+
+  const noticeCountBeforeNextSpin = player.messages
+    .filter((entry) => testNoticePattern.test(entry.message)).length
+  const consumedCountBeforeNextSpin = server.lines
+    .filter((line) => consumedAuditPattern.test(line)).length
+  assert(noticeCountBeforeNextSpin >= 1, 'the forced spin must emit its player test notice')
+  assert(consumedCountBeforeNextSpin >= 1, 'the forced spin must emit its consumed audit')
+
+  const beforeNextSpin = ledgerSnapshot()
+  await waitUntil(() => player.bot.currentWindow?.slots[49], 5_000,
+    'normal spin button after forced settlement')
+  await player.click(49)
+  const nextWagers = await waitUntil(() => {
+    const rows = newWagersSince(beforeNextSpin, 'slot')
+    return rows.length === 1 && rows[0].state === 'CLOSED' ? rows : null
+  }, 20_000, 'post-force normal slot settlement')
+  assertCleanTerminalWagers(nextWagers, 1)
+  await delay(250)
+  const noticeCountAfterNextSpin = player.messages
+    .filter((entry) => testNoticePattern.test(entry.message)).length
+  const consumedCountAfterNextSpin = server.lines
+    .filter((line) => consumedAuditPattern.test(line)).length
+  assert(noticeCountAfterNextSpin === noticeCountBeforeNextSpin,
+    'the spin after one-shot consumption must not emit another test-result notice')
+  assert(consumedCountAfterNextSpin === consumedCountBeforeNextSpin,
+    'the spin after one-shot consumption must not consume another forced-result directive')
+  await player.closeWindow()
+}
+
 async function openPhysical(server, bot, position, topSize = 54) {
   await bot.closeWindow()
   await bot.teleport(server, position.offset(0, 0, -2))
@@ -804,15 +983,37 @@ async function main() {
   const persistenceMode = process.argv.includes('--persistence-only')
   const hardKillMode = process.argv.includes('--hard-kill-recovery')
   const creationGuideMode = process.argv.includes('--creation-guide-only')
+  const bootstrapMode = process.argv.includes('--bootstrap-only')
+  const createOnlyMode = process.argv.includes('--create-only')
+  const forcedSlotIntegrationMode = !persistenceMode && !hardKillMode && !creationGuideMode
+    && !bootstrapMode && !createOnlyMode
   const dataFile = path.join(SERVER_DIR, 'plugins', 'SmartGambling', 'data.json')
   const beforePersistenceText = persistenceMode && fs.existsSync(dataFile)
     ? fs.readFileSync(dataFile, 'utf8') : null
   const beforePersistenceMachines = persistenceMode ? machinesFromData() : []
+  let forcedSlotConfigGuard
   let failure
   try {
+    // Existing isolated servers may predate the Testing section. Always stage
+    // an explicit value before startup: only the full normal suite enables it.
+    forcedSlotConfigGuard = isolateForcedSlotConfig(forcedSlotIntegrationMode)
     await server.start()
+    if (forcedSlotIntegrationMode) {
+      // A brand-new server creates config.yml during the first startup. Patch
+      // that generated file and restart once; /sg reload is player-only.
+      // Existing servers were patched before startup and already emitted this
+      // warning.
+      if (!forcedSlotConfigGuard) {
+        forcedSlotConfigGuard = isolateForcedSlotConfig(true)
+        assert(forcedSlotConfigGuard, 'SmartGambling did not create config.yml during startup')
+        await server.stop(false)
+        await server.start()
+      }
+      await server.waitFor(/Forced slot results are ENABLED/i, 30_000,
+        'isolated forced slot test mode activation')
+    }
     await bootstrap(server)
-    if (process.argv.includes('--bootstrap-only')) return
+    if (bootstrapMode) return
 
     if (creationGuideMode) {
       const [admin] = await connectBots(server, ['SGGuideAdmin'])
@@ -881,9 +1082,11 @@ async function main() {
       `${JSON.stringify(machinesFromData(), null, 2)}\n`,
       'utf8'
     )
-    if (process.argv.includes('--create-only')) return
+    if (createOnlyMode) return
 
     const [, botA, botB, botC] = connected
+    await runCase(report, 'slot test mode: forced five-Septar result, 50x ledger payout and one-shot consume',
+      () => testForcedSlotResult(server, admin, botA, machines.SlotMachine))
     await runCase(report, 'slot: CE GUI, rapid-click idempotency, in-use guard, reload refusal/success',
       () => testSlot(server, admin, botA, botB, machines.SlotMachine))
     await runCase(report, 'blackjack: two-player equal stake, atomic lock and settlement',
@@ -918,6 +1121,11 @@ async function main() {
       try { await bot.disconnect() } catch (error) { process.stderr.write(`${error.stack || error}\n`) }
     }
     try { await server.stop() } catch (error) { process.stderr.write(`${error.stack || error}\n`) }
+    try {
+      forcedSlotConfigGuard?.restore()
+    } catch (error) {
+      process.stderr.write(`Could not restore SmartGambling config: ${error.stack || error}\n`)
+    }
   }
   if (failure) process.exitCode = 1
 }

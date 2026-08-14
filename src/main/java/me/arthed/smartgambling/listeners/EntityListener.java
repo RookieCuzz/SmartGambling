@@ -85,6 +85,10 @@ public class EntityListener implements Listener {
         if (openInterface != null) {
             openInterface.machineType.forceClose(event.getPlayer());
         }
+        this.smartGambling.clearForcedSlotResults(
+                event.getPlayer().getUniqueId(),
+                "target player disconnected"
+        );
 
     }
 

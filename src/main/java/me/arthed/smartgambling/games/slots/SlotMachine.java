@@ -1,11 +1,17 @@
 package me.arthed.smartgambling.games.slots;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import me.arthed.smartgambling.SmartGambling;
@@ -24,6 +30,7 @@ import me.arthed.smartgambling.games.common.machine.OpenInterface;
 import me.arthed.smartgambling.games.common.machine.OpenMachine;
 import me.arthed.smartgambling.games.slots.objects.SlotItem;
 import me.arthed.smartgambling.games.slots.objects.rewards.Reward;
+import me.arthed.smartgambling.games.slots.testing.ForcedSlotResultRegistry;
 import me.arthed.smartgambling.utils.DisplayUtils;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -56,6 +63,9 @@ public class SlotMachine implements Machine {
     private final SubInventory rewardsGUI;
     private final NavigableMap<Integer, SlotItem> itemsWeighed;
     private final int itemsTotalWeight;
+    private final List<String> symbolIds;
+    private final Map<String, String> canonicalSymbolIds;
+    private final Map<String, SlotItem> symbolsByNormalizedId;
     private final List<Reward> rewards;
     public final int defaultBet;
     private final int animationDuration;
@@ -63,7 +73,7 @@ public class SlotMachine implements Machine {
     private final InventoryAnimations animations;
     private final HashMap<Player, SlotMachine.PlayerInventoryData> playerInventoryData;
 
-    public SlotMachine(String name, ItemStack machineItem, double[] entityOffset, String inventoryTitle, Inventory baseInventory, List<List<Integer>> displaySlots, Button spinButton, Button moneyButton, Button rewardsGuiButton, Button closeButton, SubInventory rewardsGUI, NavigableMap<Integer, SlotItem> itemsWeighed, int itemsTotalWeight, List<Reward> rewards, InventoryAnimations animations, int animationDuration, int defaultBet, int animationStartingSpeed) {
+    public SlotMachine(String name, ItemStack machineItem, double[] entityOffset, String inventoryTitle, Inventory baseInventory, List<List<Integer>> displaySlots, Button spinButton, Button moneyButton, Button rewardsGuiButton, Button closeButton, SubInventory rewardsGUI, NavigableMap<Integer, SlotItem> itemsWeighed, int itemsTotalWeight, Map<String, SlotItem> symbols, List<Reward> rewards, InventoryAnimations animations, int animationDuration, int defaultBet, int animationStartingSpeed) {
         this.name = name;
         this.machineItem = machineItem;
         this.entityOffset = entityOffset;
@@ -77,6 +87,25 @@ public class SlotMachine implements Machine {
         this.rewardsGUI = rewardsGUI;
         this.itemsWeighed = itemsWeighed;
         this.itemsTotalWeight = itemsTotalWeight;
+        LinkedHashMap<String, String> canonicalIds = new LinkedHashMap<>();
+        LinkedHashMap<String, SlotItem> normalizedSymbols = new LinkedHashMap<>();
+        for (Map.Entry<String, SlotItem> entry : Objects.requireNonNull(symbols, "symbols").entrySet()) {
+            String id = Objects.requireNonNull(entry.getKey(), "symbol id");
+            if (id.isBlank()) {
+                throw new IllegalArgumentException("Slot symbol ID cannot be blank");
+            }
+            String normalizedId = normalizeSymbolId(id);
+            if (canonicalIds.putIfAbsent(normalizedId, id) != null) {
+                throw new IllegalArgumentException("Duplicate slot symbol ID ignoring case: " + id);
+            }
+            normalizedSymbols.put(normalizedId, Objects.requireNonNull(entry.getValue(), "slot symbol"));
+        }
+        if (normalizedSymbols.isEmpty()) {
+            throw new IllegalArgumentException("Slot machine must configure at least one weighted symbol");
+        }
+        this.symbolIds = List.copyOf(canonicalIds.values());
+        this.canonicalSymbolIds = Collections.unmodifiableMap(canonicalIds);
+        this.symbolsByNormalizedId = Collections.unmodifiableMap(normalizedSymbols);
         this.rewards = rewards;
         this.animationDuration = animationDuration;
         this.defaultBet = defaultBet;
@@ -294,6 +323,52 @@ public class SlotMachine implements Machine {
         return this.entityOffset;
     }
 
+    public int getReelCount() {
+        return this.displaySlots.size();
+    }
+
+    public List<String> getSymbolIds() {
+        return this.symbolIds;
+    }
+
+    /**
+     * Validates a test result against this machine's weighted Items catalog and
+     * returns the IDs with the exact spelling used in configuration.
+     */
+    public List<String> canonicalizeSymbolIds(List<String> rawIds) {
+        Objects.requireNonNull(rawIds, "rawIds");
+        if (rawIds.size() != this.getReelCount()) {
+            throw new IllegalArgumentException(
+                    "Expected " + this.getReelCount() + " slot symbols, but received " + rawIds.size()
+            );
+        }
+        ArrayList<String> canonical = new ArrayList<>(rawIds.size());
+        for (String rawId : rawIds) {
+            if (rawId == null || rawId.isBlank()) {
+                throw new IllegalArgumentException("Slot symbol ID cannot be blank");
+            }
+            String configuredId = this.canonicalSymbolIds.get(normalizeSymbolId(rawId));
+            if (configuredId == null) {
+                throw new IllegalArgumentException("Unknown weighted slot symbol '" + rawId + "'");
+            }
+            canonical.add(configuredId);
+        }
+        return List.copyOf(canonical);
+    }
+
+    private SlotItem[] resolveSymbolIds(List<String> rawIds) {
+        List<String> canonical = this.canonicalizeSymbolIds(rawIds);
+        SlotItem[] result = new SlotItem[canonical.size()];
+        for (int index = 0; index < canonical.size(); index++) {
+            result[index] = this.symbolsByNormalizedId.get(normalizeSymbolId(canonical.get(index)));
+        }
+        return result;
+    }
+
+    private static String normalizeSymbolId(String id) {
+        return id.toLowerCase(Locale.ROOT);
+    }
+
     public void spin(Inventory inventory, Player player) {
         SlotMachine.PlayerInventoryData invData = this.playerInventoryData.get(player);
         OpenInterface openInterface = SmartGambling.getInstance().openMachines.get(player);
@@ -362,6 +437,28 @@ public class SlotMachine implements Machine {
         invData.resultsReady = false;
         invData.spinning = true;
         Arrays.fill(invData.finalItems, null);
+        invData.clearForcedResult();
+        boolean forcedResultReady;
+        try {
+            forcedResultReady = this.claimForcedResult(player, invData);
+        } catch (RuntimeException exception) {
+            invData.spinning = false;
+            try {
+                SmartGambling.getInstance().getLogger().log(
+                        Level.SEVERE,
+                        "Failed to prepare forced slot test state after placing wager for " + player.getName(),
+                        exception
+                );
+            } catch (RuntimeException ignored) {
+                // The wager safety path below must still run if logging itself fails.
+            }
+            this.abortPlacedSpin(player, invData, "forced slot test preparation failed");
+            return;
+        }
+        if (!forcedResultReady) {
+            this.abortPlacedSpin(player, invData, "forced slot test result was invalid");
+            return;
+        }
         try {
             this.animations.startDependentAnimations(inventory);
             this.startAnimation(inventory, player);
@@ -370,13 +467,25 @@ public class SlotMachine implements Machine {
                     return;
                 }
                 invData.spinEndTask = null;
+                this.cancelAnimationTasks(invData);
                 invData.spinning = false;
-                invData.resultsReady = this.hasCompleteResult(invData);
                 try {
                     this.animations.stopDependentAnimations(inventory);
                 } catch (RuntimeException exception) {
                     SmartGambling.getInstance().getLogger().log(Level.WARNING, "Failed to stop slot animation for " + player.getName(), exception);
                 }
+                if (invData.forcedFinalItems != null && !invData.forcedResultApplied) {
+                    invData.resultsReady = false;
+                    SmartGambling.getInstance().getLogger().severe(
+                            "Forced slot test result did not reach every reel for " + player.getName()
+                    );
+                    this.refundWager(player, invData, "forced slot test result was incomplete");
+                    if (invData.wagerPending) {
+                        this.scheduleWagerRetry(player, invData);
+                    }
+                    return;
+                }
+                invData.resultsReady = this.hasCompleteResult(invData);
                 if (!invData.resultsReady) {
                     this.refundWager(player, invData, "slot result was incomplete");
                     if (invData.wagerPending) {
@@ -397,7 +506,7 @@ public class SlotMachine implements Machine {
                         this.scheduleWagerRetry(player, invData);
                     }
                 }
-            }, (long)(this.animationDuration + 21) + 6L * (long)this.displaySlots.size());
+            }, spinEndDelay(this.animationDuration, this.displaySlots.size()));
         } catch (RuntimeException exception) {
             this.cancelAnimationTasks(invData);
             Arrays.fill(invData.animationSpeed, 0);
@@ -411,6 +520,104 @@ public class SlotMachine implements Machine {
             return;
         }
         player.sendMessage(String.format((String)SmartGambling.getInstance().configManager.messages.get("moneyExtracted"), bet, SmartGambling.getEconomy().getBalance(player)));
+    }
+
+    private void abortPlacedSpin(
+            Player player,
+            SlotMachine.PlayerInventoryData invData,
+            String reason
+    ) {
+        invData.spinning = false;
+        invData.resultsReady = false;
+        this.refundWager(player, invData, reason);
+        if (invData.wagerPending) {
+            this.scheduleWagerRetry(player, invData);
+        }
+    }
+
+    private boolean claimForcedResult(Player player, SlotMachine.PlayerInventoryData invData) {
+        SmartGambling plugin = SmartGambling.getInstance();
+        if (!plugin.isForcedSlotResultsEnabled()) {
+            return true;
+        }
+
+        Optional<ForcedSlotResultRegistry.Directive> claimed;
+        try {
+            plugin.auditExpiredForcedSlotDirectives();
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.WARNING, "Failed to audit expired forced slot directives", exception);
+        }
+        claimed = plugin.getForcedSlotResultRegistry().claim(player.getUniqueId(), this.name);
+        if (claimed.isEmpty()) {
+            return true;
+        }
+
+        ForcedSlotResultRegistry.Directive directive = claimed.get();
+        SlotItem[] forcedItems;
+        List<String> canonicalIds;
+        try {
+            canonicalIds = this.canonicalizeSymbolIds(directive.symbolIds());
+            forcedItems = this.resolveSymbolIds(canonicalIds);
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(
+                    Level.SEVERE,
+                    "Claimed forced slot directive " + directive.directiveId()
+                            + " is not valid for machine type '" + this.name + "'",
+                    exception
+            );
+            if (player.isOnline()) {
+                try {
+                    player.sendMessage(ChatColor.RED + "老虎机测试组合无效，本次下注将退还。请联系管理员。");
+                } catch (RuntimeException noticeException) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to notify player about invalid forced slot result", noticeException);
+                }
+            }
+            return false;
+        }
+
+        invData.forcedFinalItems = forcedItems;
+        invData.forcedLinesApplied = new boolean[forcedItems.length];
+        invData.forcedDirective = directive;
+        try {
+            plugin.auditForcedSlotDirective("consumed", directive, "wager=" + invData.wager.id());
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.WARNING, "Failed to audit consumed forced slot directive", exception);
+        }
+        if (player.isOnline()) {
+            try {
+                player.sendMessage(ChatColor.YELLOW + "本局使用测试组合，结果不代表实际概率。");
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.WARNING, "Failed to notify player about forced slot test result", exception);
+            }
+        }
+        return true;
+    }
+
+    static boolean copyForcedLineResult(
+            SlotItem[] forcedItems,
+            SlotItem[] finalItems,
+            boolean[] appliedLines,
+            int line
+    ) {
+        Objects.requireNonNull(forcedItems, "forcedItems");
+        Objects.requireNonNull(finalItems, "finalItems");
+        Objects.requireNonNull(appliedLines, "appliedLines");
+        if (forcedItems.length == 0
+                || forcedItems.length != finalItems.length
+                || forcedItems.length != appliedLines.length) {
+            throw new IllegalArgumentException("Forced slot result must match the configured reel count");
+        }
+        if (line < 0 || line >= forcedItems.length) {
+            throw new IndexOutOfBoundsException("Forced slot line is outside the configured reels: " + line);
+        }
+        finalItems[line] = Objects.requireNonNull(forcedItems[line], "forced slot item");
+        appliedLines[line] = true;
+        for (boolean applied : appliedLines) {
+            if (!applied) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void stoppedSpinning(Inventory inventory, Player player) {
@@ -598,6 +805,7 @@ public class SlotMachine implements Machine {
         invData.wagerAmount = 0;
         invData.resultsReady = false;
         invData.wager = null;
+        invData.clearForcedResult();
     }
 
     private SlotMachine.PlayerInventoryData findUnresolvedWager(Player player) {
@@ -805,13 +1013,27 @@ public class SlotMachine implements Machine {
     }
 
     private void spinLine(int line, Inventory inventory, Player player, SlotMachine.PlayerInventoryData invData) {
-        if (this.playerInventoryData.get(player) == invData) {
-            invData.finalItems[line] = invData.lastItems[line];
-            invData.lastItems[line] = this.getRandomItem();
-            inventory.setItem((Integer) ((List)this.displaySlots.get(line)).get(2), inventory.getItem((Integer) ((List)this.displaySlots.get(line)).get(1)));
-            inventory.setItem((Integer) ((List)this.displaySlots.get(line)).get(1), inventory.getItem((Integer) ((List)this.displaySlots.get(line)).get(0)));
-            inventory.setItem((Integer) ((List)this.displaySlots.get(line)).get(0), invData.lastItems[line].itemStack);
-            if (line == 1) {
+        if (this.playerInventoryData.get(player) == invData && invData.spinning) {
+            boolean forcedTerminalFrame = invData.forcedFinalItems != null
+                    && invData.animationSpeed[line] == 0;
+
+            int topSlot = this.displaySlots.get(line).get(0);
+            int middleSlot = this.displaySlots.get(line).get(1);
+            int bottomSlot = this.displaySlots.get(line).get(2);
+            boolean forcedFrameRendered = false;
+            if (forcedTerminalFrame) {
+                forcedFrameRendered = this.renderForcedTerminalFrame(line, inventory, invData);
+                if (!forcedFrameRendered) {
+                    return;
+                }
+            } else {
+                invData.finalItems[line] = invData.lastItems[line];
+                invData.lastItems[line] = this.getRandomItem();
+                inventory.setItem(bottomSlot, inventory.getItem(middleSlot));
+                inventory.setItem(middleSlot, inventory.getItem(topSlot));
+                inventory.setItem(topSlot, invData.lastItems[line].itemStack);
+            }
+            if (shouldAnimateDependent(line, forcedFrameRendered)) {
                 this.animations.animateDependent(inventory);
             }
 
@@ -828,8 +1050,84 @@ public class SlotMachine implements Machine {
         }
     }
 
+    static boolean shouldAnimateDependent(int line, boolean forcedFrameRendered) {
+        return line == 1 && !forcedFrameRendered;
+    }
+
+    static long reelStopDelay(int animationDuration, int line) {
+        if (animationDuration < 0 || line < 0) {
+            throw new IllegalArgumentException("Animation duration and reel index cannot be negative");
+        }
+        return (long) animationDuration + 20L + 6L * line;
+    }
+
+    static long spinEndDelay(int animationDuration, int reelCount) {
+        if (animationDuration < 0 || reelCount <= 0) {
+            throw new IllegalArgumentException("Animation duration cannot be negative and reel count must be positive");
+        }
+        return (long) animationDuration + 21L + 6L * reelCount;
+    }
+
+    private boolean renderForcedTerminalFrame(
+            int line,
+            Inventory inventory,
+            SlotMachine.PlayerInventoryData invData
+    ) {
+        if (!isForcedLinePending(invData.forcedFinalItems, invData.forcedLinesApplied, line)) {
+            return false;
+        }
+        SlotItem forcedItem = invData.forcedFinalItems[line];
+        if (forcedItem == null || forcedItem.itemStack == null) {
+            throw new IllegalStateException("Forced slot result contains a non-displayable item");
+        }
+
+        int topSlot = this.displaySlots.get(line).get(0);
+        int middleSlot = this.displaySlots.get(line).get(1);
+        int bottomSlot = this.displaySlots.get(line).get(2);
+        SlotItem filler = this.getRandomItem();
+        invData.lastItems[line] = filler;
+        inventory.setItem(bottomSlot, inventory.getItem(middleSlot));
+        inventory.setItem(middleSlot, forcedItem.itemStack.clone());
+        inventory.setItem(topSlot, filler.itemStack);
+        boolean complete = copyForcedLineResult(
+                invData.forcedFinalItems,
+                invData.finalItems,
+                invData.forcedLinesApplied,
+                line
+        );
+        if (complete && !invData.forcedResultApplied) {
+            invData.forcedResultApplied = true;
+            SmartGambling plugin = SmartGambling.getInstance();
+            try {
+                plugin.auditForcedSlotDirective(
+                        "applied",
+                        invData.forcedDirective,
+                        "wager=" + invData.wager.id()
+                );
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.WARNING, "Failed to audit applied forced slot directive", exception);
+            }
+        }
+        return true;
+    }
+
+    static boolean isForcedLinePending(SlotItem[] forcedItems, boolean[] appliedLines, int line) {
+        if (forcedItems == null) {
+            return false;
+        }
+        Objects.requireNonNull(appliedLines, "appliedLines");
+        if (forcedItems.length == 0 || forcedItems.length != appliedLines.length) {
+            throw new IllegalArgumentException("Forced slot result must match the configured reel count");
+        }
+        if (line < 0 || line >= forcedItems.length) {
+            throw new IndexOutOfBoundsException("Forced slot line is outside the configured reels: " + line);
+        }
+        return !appliedLines[line];
+    }
+
     private void startAnimation(Inventory inventory, Player player) {
         SlotMachine.PlayerInventoryData invData = (SlotMachine.PlayerInventoryData)this.playerInventoryData.get(player);
+        this.cancelAnimationTasks(invData);
 
         for(int i = 0; i < this.displaySlots.size(); ++i) {
             invData.animationSpeed[i] = this.animationStartingSpeed;
@@ -871,16 +1169,17 @@ public class SlotMachine implements Machine {
             }
 
         }, (long)this.animationDuration);
-        this.scheduleAnimationTask(player, invData, () -> {
-            for(int i = 0; i < this.displaySlots.size(); ++i) {
-                int k = i;
-                this.scheduleAnimationTask(player, invData, () -> {
-                    invData.animationSpeed[k] = 0;
-                    player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BIT, 2.0F, 1.0F);
-                }, 6L * (long)i);
-            }
-
-        }, (long)(this.animationDuration + 20));
+        for (int i = 0; i < this.displaySlots.size(); ++i) {
+            int k = i;
+            this.scheduleAnimationTask(player, invData, () -> {
+                invData.animationSpeed[k] = 0;
+                boolean forcedFrameRendered = this.renderForcedTerminalFrame(k, inventory, invData);
+                if (forcedFrameRendered) {
+                    player.playSound(player, Sound.BLOCK_BAMBOO_HIT, 0.02F, 0.5F);
+                }
+                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BIT, 2.0F, 1.0F);
+            }, reelStopDelay(this.animationDuration, i));
+        }
 
     }
 
@@ -900,6 +1199,10 @@ public class SlotMachine implements Machine {
         public WagerHandle wager;
         public BukkitTask spinEndTask;
         public BukkitTask settlementTask;
+        public SlotItem[] forcedFinalItems;
+        public boolean[] forcedLinesApplied;
+        public boolean forcedResultApplied;
+        public ForcedSlotResultRegistry.Directive forcedDirective;
 
         private PlayerInventoryData(
                 int[] animationSpeed,
@@ -920,6 +1223,13 @@ public class SlotMachine implements Machine {
                 throw new IllegalStateException("Slot session exhausted its spin ordinal");
             }
             return ++this.spinOrdinal;
+        }
+
+        private void clearForcedResult() {
+            this.forcedFinalItems = null;
+            this.forcedLinesApplied = null;
+            this.forcedResultApplied = false;
+            this.forcedDirective = null;
         }
     }
 }

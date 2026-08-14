@@ -5,9 +5,13 @@ package me.arthed.smartgambling.config;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -58,6 +62,7 @@ public class ConfigManager {
     public List<String> helpMenu;
     private volatile PlaceholderMessages placeholderMessages = PlaceholderMessages.empty();
     private volatile CreationGuideSettings creationGuideSettings = CreationGuideSettings.DEFAULTS;
+    private volatile ForcedSlotTestSettings forcedSlotTestSettings = ForcedSlotTestSettings.DEFAULTS;
 
     static int requireInventorySize(ConfigurationSection config, String path) {
         Objects.requireNonNull(config, "config");
@@ -296,6 +301,7 @@ public class ConfigManager {
         YamlConfiguration bundledDefaults = loadBundledMainConfiguration();
         config.setDefaults(bundledDefaults);
         CreationGuideSettings loadedCreationGuide = CreationGuideSettings.from(config);
+        ForcedSlotTestSettings loadedForcedSlotTestSettings = ForcedSlotTestSettings.from(config);
         HashMap<String, String> loadedMessages = new HashMap<>();
         String prefix = Objects.requireNonNull(config.getString("Messages.prefix"), "Messages.prefix");
         var defaultMessageSection = Objects.requireNonNull(
@@ -323,6 +329,7 @@ public class ConfigManager {
         }
         this.messages = loadedMessages;
         this.creationGuideSettings = loadedCreationGuide;
+        this.forcedSlotTestSettings = loadedForcedSlotTestSettings;
 
         List<String> loadedHelpMenu = config.getStringList("helpMenu");
 
@@ -392,6 +399,14 @@ public class ConfigManager {
 
     public void applyCreationGuideSettings(CreationGuideSettings settings) {
         this.creationGuideSettings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public ForcedSlotTestSettings getForcedSlotTestSettings() {
+        return this.forcedSlotTestSettings;
+    }
+
+    public void applyForcedSlotTestSettings(ForcedSlotTestSettings settings) {
+        this.forcedSlotTestSettings = Objects.requireNonNull(settings, "settings");
     }
 
     public void loadPlaceholdersConfig() {
@@ -855,6 +870,8 @@ public class ConfigManager {
         requirePopulatedSlots(baseInventory, closeButtonSlots, "GUI.closeButton");
         NavigableMap<Integer, SlotItem> itemsWeighed = new TreeMap();
         HashMap<String, SlotItem> itemDictionary = new HashMap();
+        Map<String, SlotItem> weightedSymbols = new LinkedHashMap<>();
+        HashSet<String> normalizedSymbolIds = new HashSet<>();
         int totalWeight = 0;
         ConfigurationSection slotItemsSection = requireSection(config, "Items");
         if (slotItemsSection.getKeys(false).isEmpty()) {
@@ -862,6 +879,9 @@ public class ConfigManager {
         }
 
         for(String key : slotItemsSection.getKeys(false)) {
+            if (!normalizedSymbolIds.add(key.toLowerCase(Locale.ROOT))) {
+                throw validation("Items." + key, "duplicates another weighted item name ignoring case");
+            }
             String chancePath = "Items." + key + ".chance";
             ItemStack item = this.loadItem(config, "Items." + key);
             SlotItem slotItem = new SlotItem(item);
@@ -869,6 +889,7 @@ public class ConfigManager {
             totalWeight = addPositiveWeight(totalWeight, chance, chancePath);
             itemsWeighed.put(totalWeight, slotItem);
             itemDictionary.put(key, slotItem);
+            weightedSymbols.put(key, slotItem);
         }
 
         for(String key : slotItemsSection.getKeys(false)) {
@@ -992,7 +1013,7 @@ public class ConfigManager {
         ItemStack slotMachineItem = this.loadItem(config, "Machine");
         double[] entityOffset = new double[]{config.getDouble("Machine.Offset.x"), config.getDouble("Machine.Offset.y"), config.getDouble("Machine.Offset.z")};
 
-        return new SlotMachine(name, slotMachineItem, entityOffset, inventoryTitle, baseInventory, displaySlots, spinButton, moneyButton, rewardsGuiButton, new Button(new HashSet(closeButtonSlots)), rewardsGui, itemsWeighed, totalWeight, rewards, new InventoryAnimations(animations, dependentAnimations), animationDuration, defaultBet, animationStartingSpeed);
+        return new SlotMachine(name, slotMachineItem, entityOffset, inventoryTitle, baseInventory, displaySlots, spinButton, moneyButton, rewardsGuiButton, new Button(new HashSet(closeButtonSlots)), rewardsGui, itemsWeighed, totalWeight, Collections.unmodifiableMap(new LinkedHashMap<>(weightedSymbols)), rewards, new InventoryAnimations(animations, dependentAnimations), animationDuration, defaultBet, animationStartingSpeed);
     }
 
     public SubInventory loadSubInventory(FileConfiguration config, String path) {

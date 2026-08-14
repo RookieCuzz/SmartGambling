@@ -1,9 +1,12 @@
 package me.arthed.smartgambling.commands;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import me.arthed.smartgambling.SmartGambling;
@@ -18,6 +21,8 @@ import me.arthed.smartgambling.games.blackjack.MachineDataBlackjack;
 import me.arthed.smartgambling.games.common.machine.Machine;
 import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
+import me.arthed.smartgambling.games.slots.SlotMachine;
+import me.arthed.smartgambling.games.slots.testing.ForcedSlotResultRegistry;
 import me.arthed.smartgambling.runtime.PreparedRuntime;
 import me.arthed.smartgambling.runtime.ReloadCoordinator;
 import me.arthed.smartgambling.utils.DisplayUtils;
@@ -28,6 +33,7 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Content;
 import net.md_5.bungee.api.chat.hover.content.Text;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.block.Block;
@@ -41,6 +47,7 @@ public class MainCommand
         implements CommandExecutor,
         TabExecutor {
     private static final String ADMIN_PERMISSION = "sg.admin";
+    private static final String SLOT_TEST_PERMISSION = "sg.admin.slot-test";
     private final ConfigManager configManager;
     private final SelectBlocksRoutine selectBlocksRoutine;
     private final MachineCreationValidator creationValidator;
@@ -62,6 +69,9 @@ public class MainCommand
         }
         if (args.length > 0 && args[0].equalsIgnoreCase("ledger")) {
             return this.ledgerCommand(sender, args);
+        }
+        if (args.length > 0 && args[0].equalsIgnoreCase("slot")) {
+            return this.slotTestCommand(sender, args);
         }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(ChatColor.RED + "此子命令只能由游戏内玩家执行。");
@@ -161,6 +171,198 @@ public class MainCommand
         sender.sendMessage(ChatColor.YELLOW + "/sg ledger list [page]");
         sender.sendMessage(ChatColor.YELLOW + "/sg ledger resolve <transaction-id> applied|not-applied");
         return false;
+    }
+
+    private boolean slotTestCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(SLOT_TEST_PERMISSION)) {
+            sender.sendMessage(this.configManager.messages.getOrDefault(
+                    "noPermission", ChatColor.RED + "你没有权限使用此命令。"));
+            return false;
+        }
+        if (args.length < 3 || !args[1].equalsIgnoreCase("test")) {
+            this.sendSlotTestUsage(sender);
+            return false;
+        }
+
+        SmartGambling plugin = SmartGambling.getInstance();
+        if (!plugin.isForcedSlotResultsEnabled()) {
+            sender.sendMessage(ChatColor.RED
+                    + "老虎机强制结果测试模式已关闭。请先在 config.yml 中启用 "
+                    + "Testing.forcedSlotResults.enabled，再执行 /sg reload。");
+            return false;
+        }
+
+        ForcedSlotResultRegistry registry = plugin.getForcedSlotResultRegistry();
+        plugin.auditExpiredForcedSlotDirectives();
+        if (args[2].equalsIgnoreCase("force")) {
+            return this.forceSlotResult(
+                    sender, args, plugin.getForcedSlotResultExpirySeconds(), registry);
+        }
+        if (args[2].equalsIgnoreCase("show")) {
+            return this.showForcedSlotResults(sender, args, registry);
+        }
+        if (args[2].equalsIgnoreCase("clear")) {
+            return this.clearForcedSlotResults(sender, args, registry);
+        }
+        this.sendSlotTestUsage(sender);
+        return false;
+    }
+
+    private boolean forceSlotResult(
+            CommandSender sender,
+            String[] args,
+            int expirySeconds,
+            ForcedSlotResultRegistry registry
+    ) {
+        if (args.length < 6) {
+            sender.sendMessage(ChatColor.YELLOW
+                    + "用法：/sg slot test force <玩家> <机器类型> <图案1> ... <图案N>");
+            return false;
+        }
+        Player target = this.onlinePlayer(sender, args[3]);
+        if (target == null) {
+            return false;
+        }
+        SlotMachine slotMachine = this.configuredSlotMachine(sender, args[4]);
+        if (slotMachine == null) {
+            return false;
+        }
+
+        List<String> rawSymbols = Arrays.asList(args).subList(5, args.length);
+        List<String> canonicalSymbols;
+        try {
+            canonicalSymbols = slotMachine.canonicalizeSymbolIds(rawSymbols);
+        } catch (IllegalArgumentException exception) {
+            sender.sendMessage(ChatColor.RED + "无法设置测试组合：" + exception.getMessage());
+            sender.sendMessage(ChatColor.GRAY + "该机器需要 " + slotMachine.getReelCount()
+                    + " 个图案，可用图案：" + String.join(", ", slotMachine.getSymbolIds()));
+            return false;
+        }
+
+        String machineTypeId = SmartGambling.getMachineTypeId(slotMachine);
+        UUID issuerId = sender instanceof Player player ? player.getUniqueId() : null;
+        ForcedSlotResultRegistry.QueueResult queued = registry.queue(
+                target.getUniqueId(),
+                machineTypeId,
+                issuerId,
+                sender.getName(),
+                canonicalSymbols,
+                Duration.ofSeconds(expirySeconds)
+        );
+        queued.replaced().ifPresent(previous -> SmartGambling.getInstance().auditForcedSlotDirective(
+                "replaced", previous, "replacedBy=" + sender.getName() + " targetName=" + target.getName()));
+        SmartGambling.getInstance().auditForcedSlotDirective(
+                "queued", queued.directive(), "targetName=" + target.getName());
+
+        sender.sendMessage(ChatColor.GREEN + "已为 " + target.getName() + " 预设机器 "
+                + machineTypeId + " 的下一次成功下注："
+                + ChatColor.WHITE + String.join(" ", canonicalSymbols)
+                + ChatColor.GRAY + "（" + expirySeconds + " 秒后过期）");
+        if (queued.replaced().isPresent()) {
+            sender.sendMessage(ChatColor.YELLOW + "已覆盖该玩家、该机器类型的旧测试结果。");
+        }
+        return true;
+    }
+
+    private boolean showForcedSlotResults(
+            CommandSender sender,
+            String[] args,
+            ForcedSlotResultRegistry registry
+    ) {
+        if (args.length != 4) {
+            sender.sendMessage(ChatColor.YELLOW + "用法：/sg slot test show <玩家>");
+            return false;
+        }
+        Player target = this.onlinePlayer(sender, args[3]);
+        if (target == null) {
+            return false;
+        }
+        List<ForcedSlotResultRegistry.Directive> directives = registry.list(target.getUniqueId());
+        if (directives.isEmpty()) {
+            sender.sendMessage(ChatColor.GRAY + target.getName() + " 当前没有待执行的老虎机测试结果。");
+            return true;
+        }
+        sender.sendMessage(ChatColor.GOLD + target.getName() + " 的待执行老虎机测试结果：");
+        Instant now = Instant.now();
+        for (ForcedSlotResultRegistry.Directive directive : directives) {
+            long secondsLeft = Math.max(0L, Duration.between(now, directive.expiresAt()).toSeconds());
+            sender.sendMessage(ChatColor.YELLOW + "- " + directive.machineTypeId()
+                    + ChatColor.WHITE + ": " + String.join(" ", directive.symbolIds())
+                    + ChatColor.GRAY + "（剩余 " + secondsLeft + " 秒，设置者 "
+                    + directive.issuerName().orElse("控制台") + "）");
+        }
+        return true;
+    }
+
+    private boolean clearForcedSlotResults(
+            CommandSender sender,
+            String[] args,
+            ForcedSlotResultRegistry registry
+    ) {
+        if (args.length != 5) {
+            sender.sendMessage(ChatColor.YELLOW
+                    + "用法：/sg slot test clear <玩家> <机器类型|all>");
+            return false;
+        }
+        Player target = this.onlinePlayer(sender, args[3]);
+        if (target == null) {
+            return false;
+        }
+        if (args[4].equalsIgnoreCase("all")) {
+            List<ForcedSlotResultRegistry.Directive> removed = registry.clearAll(target.getUniqueId());
+            for (ForcedSlotResultRegistry.Directive directive : removed) {
+                SmartGambling.getInstance().auditForcedSlotDirective(
+                        "cleared", directive, "clearedBy=" + sender.getName()
+                                + " targetName=" + target.getName());
+            }
+            sender.sendMessage(removed.isEmpty()
+                    ? ChatColor.GRAY + target.getName() + " 没有待清除的老虎机测试结果。"
+                    : ChatColor.GREEN + "已清除 " + target.getName() + " 的 " + removed.size()
+                            + " 条老虎机测试结果。");
+            return true;
+        }
+
+        SlotMachine slotMachine = this.configuredSlotMachine(sender, args[4]);
+        if (slotMachine == null) {
+            return false;
+        }
+        String machineTypeId = SmartGambling.getMachineTypeId(slotMachine);
+        Optional<ForcedSlotResultRegistry.Directive> removed = registry.clear(
+                target.getUniqueId(), machineTypeId);
+        removed.ifPresent(directive -> SmartGambling.getInstance().auditForcedSlotDirective(
+                "cleared", directive, "clearedBy=" + sender.getName()
+                        + " targetName=" + target.getName()));
+        sender.sendMessage(removed.isPresent()
+                ? ChatColor.GREEN + "已清除 " + target.getName() + " 在 " + machineTypeId
+                        + " 上的待执行测试结果。"
+                : ChatColor.GRAY + target.getName() + " 在 " + machineTypeId
+                        + " 上没有待清除的测试结果。");
+        return true;
+    }
+
+    private Player onlinePlayer(CommandSender sender, String name) {
+        Player target = Bukkit.getPlayerExact(name);
+        if (target == null || !target.isOnline()) {
+            sender.sendMessage(ChatColor.RED + "玩家 '" + name + "' 当前不在线。");
+            return null;
+        }
+        return target;
+    }
+
+    private SlotMachine configuredSlotMachine(CommandSender sender, String rawTypeId) {
+        Machine machineType = SmartGambling.getInstance().findMachineType(rawTypeId);
+        if (!(machineType instanceof SlotMachine slotMachine)) {
+            sender.sendMessage(ChatColor.RED + "'" + rawTypeId + "' 不是已配置的老虎机类型。");
+            return null;
+        }
+        return slotMachine;
+    }
+
+    private void sendSlotTestUsage(CommandSender sender) {
+        sender.sendMessage(ChatColor.YELLOW
+                + "/sg slot test force <玩家> <机器类型> <图案1> ... <图案N>");
+        sender.sendMessage(ChatColor.YELLOW + "/sg slot test show <玩家>");
+        sender.sendMessage(ChatColor.YELLOW + "/sg slot test clear <玩家> <机器类型|all>");
     }
 
     private boolean reloadCommand(Player player) {
@@ -356,14 +558,22 @@ public class MainCommand
     }
 
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            return List.of();
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("slot")) {
+            return this.slotTestTabComplete(sender, args);
+        }
         if (args.length == 1) {
-            String[] subcommands = new String[]{"help", "add", "list", "remove", "reload", "confirm", "cancel", "rotate", "undo", "fixentities", "ledger"};
-            ArrayList<String> result = new ArrayList<String>();
-            for (String subcommand : subcommands) {
-                if (!subcommand.startsWith(args[0].toLowerCase())) continue;
-                result.add(subcommand);
+            List<String> subcommands = new ArrayList<>(List.of(
+                    "help", "add", "list", "remove", "reload", "confirm", "cancel",
+                    "rotate", "undo", "fixentities", "ledger"
+            ));
+            SmartGambling plugin = SmartGambling.getInstance();
+            if (sender.hasPermission(SLOT_TEST_PERMISSION) && plugin.isForcedSlotResultsEnabled()) {
+                subcommands.add("slot");
             }
-            return result.size() == 0 ? Arrays.asList(subcommands) : result;
+            return matching(subcommands, args[0]);
         }
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("add")) {
@@ -389,6 +599,80 @@ public class MainCommand
             return Arrays.asList("applied", "not-applied");
         }
         return null;
+    }
+
+    private List<String> slotTestTabComplete(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(SLOT_TEST_PERMISSION)
+                || !SmartGambling.getInstance().isForcedSlotResultsEnabled()) {
+            return List.of();
+        }
+        if (args.length == 2) {
+            return matching(List.of("test"), args[1]);
+        }
+        if (args.length < 3 || !args[1].equalsIgnoreCase("test")) {
+            return List.of();
+        }
+        if (args.length == 3) {
+            return matching(List.of("force", "show", "clear"), args[2]);
+        }
+        if (!args[2].equalsIgnoreCase("force")
+                && !args[2].equalsIgnoreCase("show")
+                && !args[2].equalsIgnoreCase("clear")) {
+            return List.of();
+        }
+        if (args.length == 4) {
+            List<String> onlineNames = new ArrayList<>();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                onlineNames.add(player.getName());
+            }
+            onlineNames.sort(String.CASE_INSENSITIVE_ORDER);
+            return matching(onlineNames, args[3]);
+        }
+        if (args[2].equalsIgnoreCase("show")) {
+            return List.of();
+        }
+        if (args.length == 5) {
+            List<String> machineTypes = this.slotMachineTypeIds();
+            if (args[2].equalsIgnoreCase("clear")) {
+                machineTypes.add(0, "all");
+            }
+            return matching(machineTypes, args[4]);
+        }
+        if (!args[2].equalsIgnoreCase("force")) {
+            return List.of();
+        }
+
+        Machine machine = SmartGambling.getInstance().findMachineType(args[4]);
+        if (!(machine instanceof SlotMachine slotMachine)
+                || args.length - 5 > slotMachine.getReelCount()) {
+            return List.of();
+        }
+        return matching(slotMachine.getSymbolIds(), args[args.length - 1]);
+    }
+
+    private List<String> slotMachineTypeIds() {
+        List<String> ids = new ArrayList<>();
+        for (Machine machine : SmartGambling.getInstance().machineTypes.values()) {
+            if (machine instanceof SlotMachine slotMachine) {
+                String id = SmartGambling.getMachineTypeId(slotMachine);
+                if (!ids.contains(id)) {
+                    ids.add(id);
+                }
+            }
+        }
+        ids.sort(String.CASE_INSENSITIVE_ORDER);
+        return ids;
+    }
+
+    private static List<String> matching(List<String> candidates, String rawPrefix) {
+        String prefix = rawPrefix == null ? "" : rawPrefix.toLowerCase(Locale.ROOT);
+        List<String> result = new ArrayList<>();
+        for (String candidate : candidates) {
+            if (candidate.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                result.add(candidate);
+            }
+        }
+        return result;
     }
 
     private MachineData createMachine(List<Block> blocks, CreationSession session, Player player) {

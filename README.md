@@ -124,12 +124,20 @@ JAR 内置示例 `slotExample.yml` 对应 `slotexample`；应用本仓库的 CE 
 /sg reload
 /sg ledger list [page]
 /sg ledger resolve <transaction-id> applied|not-applied
+/sg slot test force <玩家> <机器类型> <图案1> ... <图案N>
+/sg slot test show <玩家>
+/sg slot test clear <玩家> <机器类型|all>
 /jackpot
 ```
 
 `/sg reload` 在存在活动下注或未解决资金时会拒绝。空闲重载先完整解析 YAML、
 CE ID、槽位、权重和创建向导设置，成功后才切换运行时；它不会重新读取或
 清空 `data.json`。
+
+老虎机强制组合仅用于隔离环境的管理员测试，默认关闭。开启
+`Testing.forcedSlotResults.enabled` 后，需同时拥有 `sg.admin` 和
+`sg.admin.slot-test`。强制结果只作用于指定玩家在对应机器类型的下一次
+成功下注，仍会真实扣款、派奖和执行奖励命令。
 
 ## 资金账本
 
@@ -164,7 +172,7 @@ Vault 调用前会先写入持久状态。明确未入账的款项可安全重�
 仍需用原版 1.21.4 客户端做最终视觉验收。GUI 背景沿用原素材，部分
 图片仍可能含有英文装饰字样。
 
-2026-08-12 的最新 `mvn clean package` 结果为 19 个测试类、76 个用例，
+2026-08-14 的最新 `mvn clean test` 结果为 23 个测试类、103 个用例，
 0 failure / 0 error / 0 skipped。后续数字以当次构建输出为准。Mineflayer 的
 `--hard-kill-recovery` 场景已编写，但当前不宣称已通过，发布或上生产前必须在干净
 隔离服务端重新执行并保留报告。

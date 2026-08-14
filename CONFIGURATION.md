@@ -48,6 +48,29 @@ CreationGuide:
 这些值会随事务化 `/sg reload` 一起验证并切换。无效值会拒绝重载，旧运行时
 继续工作。
 
+### 老虎机强制结果测试
+
+```yaml
+Testing:
+  forcedSlotResults:
+    enabled: false
+    expiresSeconds: 120
+```
+
+该能力默认关闭，只应在隔离测试环境临时开启。`expiresSeconds` 必须为正整数，
+表示未使用的一次性指令的有效期。命令中的图案名称只能来自目标老虎机的
+`Items`，不能使用 `Categories`；数量必须与 `GUI.displaySlots` 的滚轴数相同。
+
+```text
+/sg slot test force <玩家> <机器类型> <图案1> ... <图案N>
+/sg slot test show <玩家>
+/sg slot test clear <玩家> <机器类型|all>
+```
+
+指令按“玩家 UUID + 机器类型”绑定，仅在资金账本成功接受下注后消耗一次。
+余额不足不会消耗；已开始的旋转不会被中途改写；玩家退出、成功重载或插件
+关闭会清除尚未使用的指令。测试局会真实扣款、派奖和执行奖励命令，并写入审计日志。
+
 ### 椅子
 
 ```yaml

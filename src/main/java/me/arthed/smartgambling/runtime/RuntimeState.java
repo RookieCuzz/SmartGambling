@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import me.arthed.smartgambling.SmartGambling;
+import me.arthed.smartgambling.config.ForcedSlotTestSettings;
 import me.arthed.smartgambling.games.blackjack.BlackJack;
 import me.arthed.smartgambling.games.common.inventories.ConfirmGameInventory;
 import me.arthed.smartgambling.games.common.inventories.MoneyInventory;
@@ -35,6 +36,7 @@ public record RuntimeState(
         BlackJack blackJack,
         PlaceholderMessages placeholderMessages,
         CreationGuideSettings creationGuideSettings,
+        ForcedSlotTestSettings forcedSlotTestSettings,
         ItemStack chairItem,
         double[] chairOffset
 ) {
@@ -45,6 +47,7 @@ public record RuntimeState(
         helpMenu = List.copyOf(helpMenu);
         placeholderMessages = Objects.requireNonNull(placeholderMessages, "placeholderMessages");
         creationGuideSettings = Objects.requireNonNull(creationGuideSettings, "creationGuideSettings");
+        forcedSlotTestSettings = Objects.requireNonNull(forcedSlotTestSettings, "forcedSlotTestSettings");
         chairItem = chairItem == null ? null : chairItem.clone();
         chairOffset = chairOffset == null ? new double[0] : chairOffset.clone();
     }
@@ -62,6 +65,7 @@ public record RuntimeState(
                 plugin.blackJack,
                 plugin.configManager.getPlaceholderMessages(),
                 plugin.configManager.getCreationGuideSettings(),
+                plugin.configManager.getForcedSlotTestSettings(),
                 plugin.chairItem,
                 plugin.chairOffset
         );
@@ -79,6 +83,7 @@ public record RuntimeState(
         plugin.blackJack = this.blackJack;
         plugin.configManager.applyPlaceholderMessages(this.placeholderMessages);
         plugin.configManager.applyCreationGuideSettings(this.creationGuideSettings);
+        plugin.configManager.applyForcedSlotTestSettings(this.forcedSlotTestSettings);
         plugin.chairItem = this.chairItem == null ? null : this.chairItem.clone();
         plugin.chairOffset = this.chairOffset.clone();
     }

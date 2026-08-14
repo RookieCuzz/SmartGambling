@@ -75,6 +75,7 @@ helpMenu:
   - '&a&lSmartGambling 1.0.10-CE &r&7管理帮助'
   - ''
   - '&f使用 &r&e&l/sg reload &r&f重载配置'
+  - '&f使用 &r&e&l/sg slot test ... &r&f管理一次性老虎机测试结果（需先启用测试开关）'
   - '&f使用 &r&e&l/sg add <机器类型> &r&f启动机器创建向导'
   - '&f选择棒：左键设置原点，右键添加交互方块，潜行右键移除'
   - '&f使用 &r&e&l/sg rotate <left|right> &r&f旋转实时预览'
@@ -126,3 +127,9 @@ CreationGuide:
   maxInteractionBlocks: 32
   maxRadius: 16
   previewIntervalTicks: 10
+
+# 仅供管理员验证显示、判奖和资金账本；正式环境应保持关闭。
+Testing:
+  forcedSlotResults:
+    enabled: false
+    expiresSeconds: 120

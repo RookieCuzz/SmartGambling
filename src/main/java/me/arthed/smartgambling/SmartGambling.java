@@ -2,6 +2,7 @@
 // Class Version: 17
 package me.arthed.smartgambling;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import me.arthed.smartgambling.games.crash.CrashMachine;
 import me.arthed.smartgambling.games.jackpot.JackpotMachine;
 import me.arthed.smartgambling.games.slots.PlaybackManager;
 import me.arthed.smartgambling.games.slots.SlotMachine;
+import me.arthed.smartgambling.games.slots.testing.ForcedSlotResultRegistry;
 import me.arthed.smartgambling.handlers.PlaceholderSnapshot;
 import me.arthed.smartgambling.handlers.WorldGuardImplementation;
 import me.arthed.smartgambling.integrations.OptionalIntegration;
@@ -99,12 +101,17 @@ public final class SmartGambling
     private BukkitTask placeholderSnapshotTask;
     private BukkitTask ledgerRetryTask;
     private BukkitTask economyReadyPollTask;
+    private BukkitTask forcedSlotExpiryTask;
     private EconomyService economyService;
     private VaultEconomyGateway economyGateway;
     private final RecoveryGate economyRecoveryGate = new RecoveryGate();
     private boolean craftEngineReady;
     private int economyReadyPolls;
     private long runtimeGeneration;
+    private final ForcedSlotResultRegistry forcedSlotResultRegistry = new ForcedSlotResultRegistry(
+            Clock.systemUTC(),
+            this::auditExpiredForcedSlotDirective
+    );
 
     public static SmartGambling getInstance() {
         return instance;
@@ -127,6 +134,83 @@ public final class SmartGambling
 
     public long advanceRuntimeGeneration() {
         return ++this.runtimeGeneration;
+    }
+
+    public ForcedSlotResultRegistry getForcedSlotResultRegistry() {
+        return this.forcedSlotResultRegistry;
+    }
+
+    public boolean isForcedSlotResultsEnabled() {
+        return this.configManager != null
+                && this.configManager.getForcedSlotTestSettings().enabled();
+    }
+
+    public int getForcedSlotResultExpirySeconds() {
+        return this.configManager == null
+                ? 120
+                : this.configManager.getForcedSlotTestSettings().expiresSeconds();
+    }
+
+    public void refreshForcedSlotTestMode() {
+        if (this.isForcedSlotResultsEnabled()) {
+            this.getLogger().warning(
+                    "[SLOT TEST] Forced slot results are ENABLED. "
+                            + "Test spins use real stakes, payouts and reward commands."
+            );
+        } else {
+            this.clearForcedSlotResults("test mode disabled");
+        }
+    }
+
+    public void auditForcedSlotDirective(
+            String action,
+            ForcedSlotResultRegistry.Directive directive,
+            String detail
+    ) {
+        Objects.requireNonNull(action, "action");
+        Objects.requireNonNull(directive, "directive");
+        String issuer = directive.issuerName().orElseGet(
+                () -> directive.issuerId().map(UUID::toString).orElse("unknown")
+        );
+        this.getLogger().warning(
+                "[SLOT TEST] action=" + auditValue(action)
+                        + " directive=" + directive.directiveId()
+                        + " issuer=" + auditValue(issuer)
+                        + " target=" + directive.playerId()
+                        + " machineType=" + auditValue(directive.machineTypeId())
+                        + " symbols=" + auditValue(String.join(",", directive.symbolIds()))
+                        + (detail == null || detail.isBlank()
+                                ? ""
+                                : " detail=" + auditValue(detail))
+        );
+    }
+
+    public void clearForcedSlotResults(UUID playerId, String reason) {
+        this.auditExpiredForcedSlotDirectives();
+        for (ForcedSlotResultRegistry.Directive directive
+                : this.forcedSlotResultRegistry.clearAll(playerId)) {
+            this.auditForcedSlotDirective("cleared", directive, reason);
+        }
+    }
+
+    public void clearForcedSlotResults(String reason) {
+        this.auditExpiredForcedSlotDirectives();
+        for (ForcedSlotResultRegistry.Directive directive
+                : this.forcedSlotResultRegistry.clearAll()) {
+            this.auditForcedSlotDirective("cleared", directive, reason);
+        }
+    }
+
+    public void auditExpiredForcedSlotDirectives() {
+        this.forcedSlotResultRegistry.purgeExpired();
+    }
+
+    private void auditExpiredForcedSlotDirective(ForcedSlotResultRegistry.Directive directive) {
+        this.auditForcedSlotDirective("expired", directive, "TTL reached");
+    }
+
+    private static String auditValue(String value) {
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 
     public static String getMachineTypeId(Machine machineType) {
@@ -266,6 +350,8 @@ public final class SmartGambling
             this.getServer().getPluginManager().registerEvents(this.selectBlocksRoutine, this);
             Objects.requireNonNull(this.getCommand("sg")).setExecutor((CommandExecutor)new MainCommand());
             Objects.requireNonNull(this.getCommand("jackpot")).setExecutor((CommandExecutor)new JackpotCommand());
+            this.refreshForcedSlotTestMode();
+            this.startForcedSlotExpiryAudit();
             this.contentInitialized = true;
             this.getLogger().info("Initialized with CraftEngine item IDs.");
         } catch (RuntimeException exception) {
@@ -326,6 +412,10 @@ public final class SmartGambling
             this.economyReadyPollTask.cancel();
             this.economyReadyPollTask = null;
         }
+        if (this.forcedSlotExpiryTask != null) {
+            this.forcedSlotExpiryTask.cancel();
+            this.forcedSlotExpiryTask = null;
+        }
         OptionalIntegration.unregisterPapi(this);
         this.shutdownGamesAndRefund();
         if (this.contentInitialized) {
@@ -340,6 +430,7 @@ public final class SmartGambling
 
     /** Stops every active game and refunds wagers that have not been settled. */
     public void shutdownGamesAndRefund() {
+        this.clearForcedSlotResults("gameplay shutdown or successful reload");
         if (this.blackJack != null) {
             this.runShutdownStep("blackjack", this.blackJack::shutdownAndRefund);
         }
@@ -394,6 +485,18 @@ public final class SmartGambling
             }
         }
         PlaybackManager.openingPlayers.clear();
+    }
+
+    private void startForcedSlotExpiryAudit() {
+        if (this.forcedSlotExpiryTask != null) {
+            this.forcedSlotExpiryTask.cancel();
+        }
+        this.forcedSlotExpiryTask = Bukkit.getScheduler().runTaskTimer(
+                this,
+                this::auditExpiredForcedSlotDirectives,
+                20L,
+                20L
+        );
     }
 
     private void runShutdownStep(String description, Runnable action) {

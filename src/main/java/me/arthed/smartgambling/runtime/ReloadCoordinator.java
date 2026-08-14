@@ -119,5 +119,6 @@ public final class ReloadCoordinator {
             }
         }
         plugin.advanceRuntimeGeneration();
+        plugin.refreshForcedSlotTestMode();
     }
 }

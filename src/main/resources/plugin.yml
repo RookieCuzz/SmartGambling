@@ -20,3 +20,6 @@ permissions:
   sg.admin:
     description: 允许管理 SmartGambling 并核对资金账本
     default: op
+  sg.admin.slot-test:
+    description: 允许预设一次性的老虎机测试结果
+    default: op
